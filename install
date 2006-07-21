@@ -1,0 +1,2 @@
+#!/bin/bash
+cp -f ./Snakes_.class /home/baggio/InCor/source/plugins
