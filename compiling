@@ -1,0 +1,7 @@
+To compile the Snakes_.java file, simply copy ij.jar to the local folder and type:
+
+javac -cp ij.jar:tools.jar Snakes_.java
+
+You can also install the plugin copying it to the right folder running the install script
+
+
