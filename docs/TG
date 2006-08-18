@@ -1,0 +1,41 @@
+Olá, Sérgio, olá, Fernando!
+
+Estive dando uma boa lida na maioria dos artigos sugeridos por vocês e acredito que o que mais me pareceu servir para o nosso desafio de segmentar imagens IVUS foi o United Snakes. 
+O que é muito interessante neste framework é que ele combina o melhor do que Snakes e Live-wire podem oferecer. 
+Tentei segmentar uma imagem IVUS com o Live-wire do GIMP e me pareceu um excelente método para formar a curva inicial de Snakes. Como é dito no próprio artigo:
+"Even with a few seed points, live wire can quickly give much better results than casual manual tracing. Hence, the resulting live wire boundary can serve well to instantiate a snake. The live wire seed points reﬂect the users prior knowledge of the object boundary.They can therefore serve as either hard or soft point constraints for the snake, depending on the users conﬁdence in the accuracies of these seed points"
+Por outro lado:
+"Snakes adhere to edges with sub-pixel accuracy and they may also be adjusted interactively as parametric curves with intuitively familiar physical behaviors. Furthermore, snakes have the power to track moving objects, while live wire does not."
+
+Algo que achei muito interessante em live wire é que usa-se basicamente apenas um algoritmo de menor caminho (como o Dijkstra, por exemplo) para ser implementado. A maior complicação oferecida na implementação pode estar relacionada a como calcular o custo dos pixels, mas isto já foi bem explorado. 
+
+Outro detalhe explorado no artigo é que, apesar de live wire não ser robusto a ruídos, Snakes são. (gostaria de explorar como funcionaria o live wire se, ao invés de tomarmos a imagem original como fonte para os custos, utilizássemos a imagem após uma filtragem de ruído Speckle)
+
+Também me chamou a atenção o fato de que as Snakes são implementadas da forma mais generalizada possível, o que dá margem ao uso de Elementos Finitos, Snakes Hermitinianas, B-Splines e diferenças finitas. Como é dito no artigo:
+"By using different shape functions and thereby generating different stiffness matrices, the behavior of the resulting snake can be adapted to speciﬁc tasks. For example, snakes that use B-spline shape functions are typically characterized by a low number of degrees of freedom, typically use polynomial basis functions of degree 2 or higher, and are inherently very smooth. Therefore, these ‘‘B-snakes’’ can be effective in segmentation or tracking tasks involving noisy images where the target object boundaries may exhibit signiﬁcant gaps in the images. On the other hand, object boundaries with many ﬁne details or rapid curvature variations may best be segmented by a snake that uses simpler shape functions and more degrees of freedom, such as a ﬁnite difference snake"
+
+Uma pequena desvantagem na utilização desta abordagem é que o JESS está totalmente apoiado no uso de Snakes como um vetor de Pontos. Pode-se ver claramente na classe principal de Snakes, a Snake.java: 
+
+   // Snake points
+   public ArrayList points;
+
+E pelo que eu vi através do código, todas as funções percorrem estes pontos para atualização de posição, velocidade e aceleração. 
+
+Agora algo que me pareceu extremamente camuflado, foi COMO é feita a transformação de uma curva inicializada por live wire para uma B-Spline ou Snake Hermitiniana. Acredito que não seja um processo manual, visto que não haveria sentido nisso. Uma solução que me parece razoável para este problema é a seguinte:
+
+Dados dois pontos consecutivos da curva inicializada por live wire (sejam P0 e P3), tomar os pontos P1, a um terço do segmento e P2 a dois terços do segmento. Com os quatro pontos P0,P1,P2 e P3, usá-los como pontos de controle para o traçado de uma B-Spline Cúbica (é fácil visualizar como isso seria pelo applet de http://www.doc.ic.ac.uk/~dfg/AndysSplineTutorial/BSplines.html). Ou talvez uma simples interpolação polinomial, mas acredito que esta não funcione. 
+
+
+Visto que a unificação de Snakes com inicialização por live wire pode agir bem em imagens com ruído e permite ao usuário um alto grau de interação (ainda com soft ou hard constraints), imagino que United Snakes seja uma boa abordagem para a nossa segmentação de IVUS. 
+
+Com relação à segmentação tridimensional, poderíamos tentar a abordagem sugerida pelo Sérgio, sobre a segmentação longitudinal, oferecendo os pontos obtidos para o live wire inicial (que acredito dar uma condição inicial para a Snake melhor do que um polígono) e posterior uso de Snakes finamente calibrada para IVUS. Ou alguma abordagem de tracking através da própria característica das Snakes ("Furthermore, snakes have the power to track moving objects, while live wire does not") utilizando-a recursivamente para os frames (que talvez não funcione pelo ruído da figura).
+
+Bem, antes de dar procedimento à implementação, gostaria de ouvir a sincera opinião de vocês, quanto à viabilidade e funcionalidade. 
+Além disto, se possível, gostaria de comentar com vocês alguns trechos do artigo, bem como algum embasamento teórico um pouco mais forte sobre o uso de B-Splines ou Hermitian Snakes, pois eu havia entendido a abordagem com o uso de um vetor de pontos, como era feito no JESS. Acredito que seja apenas uma mudança na função e nos métodos de atualização das mesmas (que vem a ser solução de problemas matriciais). 
+
+Também gostaria de esclarecer alguns pontos sobre a passagem de Live Wire para Snakes com vocês. 
+
+Já tenho uma vasta bibliografia pesquisada e uma boa idéia de como dividir e organizar as tarefas caso seja esta a abordagem utilizada para o TG. Mas primeiramente gostaria de validar as idéias com vocês antes de dar início a qualquer planejamento (embora já estejamos razoavelmente adiantados no calendário). 
+
+Muito obrigado pela atenção, 
+Daniel 
