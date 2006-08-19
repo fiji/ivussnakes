@@ -33,14 +33,14 @@ class Dijkstra{
 		imagePixels[j*x+i] = image[j*x+i];		
 		imageCosts [j*x+i] = INF;
 		visited    [j*x+i] = false;
-		System.out.print(imagePixels[j*x+i]+ " ");
+		System.out.print((imagePixels[j*x+i]&0xff)+ " ");
 	    }
 	    System.out.println("");
 	}
     }    
     //returns de cost of going from sx,sy to dx,dy
     private int edgeCost(int sx,int sy,int dx,int dy){
-	return (Math.abs(imagePixels[toIndex(sx,sy)] - imagePixels[toIndex(dx,dy)]));
+	return (Math.abs((imagePixels[toIndex(sx,sy)]&0xff) - (imagePixels[toIndex(dx,dy)]&0xff)));
 
     }
     //updates Costs and Paths for a given point
@@ -107,13 +107,6 @@ class Dijkstra{
 	whereFrom [toIndex(x,y)] = toIndex(x,y);
 
 
-	System.out.println("");
-	for(int j=0;j<height;j++){
-	    for(int i=0;i<width;i++){
-		System.out.print(imageCosts[j*width+i]+ " ");
-	    }
-	    System.out.println("");
-	}
 
 	//update costs
 	updateCosts(x,y);
@@ -122,7 +115,6 @@ class Dijkstra{
 	nextY = nextIndex/width;
 	
 	while(nextIndex!=-1){
-	    System.out.println("x " + nextX + " y " + nextY);
 	    updateCosts(nextX, nextY);
 	    nextIndex = findNext();
 	    nextX = nextIndex%width;
@@ -157,10 +149,10 @@ class Dijkstra{
 	// 1  70  2
 	// 1   1  1
 
-	byte[] teste = { 0, 70, 84, 1,
-			 0, 70, 82, 0,
-			 0, 0, 0, 0};
-	Dijkstra dj = new Dijkstra(teste,4,3);
+	byte[] teste = { 2, 70, 4,
+			 1, 70, 2,
+			 1, 1, 1};
+	Dijkstra dj = new Dijkstra(teste,3,3);
 	dj.setPoint(0,0);
     }
 }
