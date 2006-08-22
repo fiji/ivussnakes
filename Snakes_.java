@@ -97,9 +97,8 @@ public class Snakes_ implements PlugInFilter, MouseListener {
 		IJ.write("mousePressed: "+offscreenX+","+offscreenY);
 		System.out.println("mousePressed: "+offscreenX+","+offscreenY);
 		dj.setPoint(x,y);
-		
-
-		
+		img.setRoi(x,y,10,15);
+				
 	}
 
 	public void mousePressed(MouseEvent e) {
