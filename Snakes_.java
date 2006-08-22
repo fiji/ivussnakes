@@ -2,12 +2,15 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
+import ij.gui.PolygonRoi;
+import ij.gui.Roi;
 import ij.gui.Toolbar;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -97,7 +100,12 @@ public class Snakes_ implements PlugInFilter, MouseListener {
 		IJ.write("mousePressed: "+offscreenX+","+offscreenY);
 		System.out.println("mousePressed: "+offscreenX+","+offscreenY);
 		dj.setPoint(x,y);
-		img.setRoi(x,y,10,15);
+		Polygon p = new Polygon();
+		p.addPoint(e.getX()+10,e.getY()+10);
+		p.addPoint(e.getX()+20,e.getY()+20);
+		p.addPoint(e.getX()+20,e.getY()+10);
+		PolygonRoi a = new PolygonRoi(p,Roi.POLYGON);
+		img.setRoi(a);
 				
 	}
 
