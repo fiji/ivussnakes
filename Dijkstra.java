@@ -7,6 +7,8 @@ class Dijkstra{
     boolean[] visited; //stores weather the node was marked or not
     int width;
     int height;
+    int sx,sy; //seed x and seed y, weight zero for this point
+     
 
     static int INF = 0x7FFFFFFF; //maximum integer
 
@@ -102,25 +104,37 @@ class Dijkstra{
 	int nextIndex;
 	int nextX;
 	int nextY;
+	sx = x;
+	sy = y;
+	
+	for(int i=0;i<height*width;i++){
+		imageCosts[i]  = INF;
+		visited[i]  = false;
+	}
+	
+	
 	visited   [toIndex(x,y)] = true; //mark as visited
 	imageCosts[toIndex(x,y)] = 0; //sets initial point with zero cost
 	whereFrom [toIndex(x,y)] = toIndex(x,y);
 
-
+	
 
 	//update costs
 	updateCosts(x,y);
 	nextIndex = findNext();
 	nextX = nextIndex%width;
 	nextY = nextIndex/width;
-	
+	int debugcount = 0;
 	while(nextIndex!=-1){
+		System.out.println("Debug count " + debugcount++);
 	    updateCosts(nextX, nextY);
 	    nextIndex = findNext();
 	    nextX = nextIndex%width;
 	    nextY = nextIndex/width;
 	}
 	
+	System.out.println("Point set");
+	/*
 	System.out.println("");
 	for(int j=0;j<height;j++){
 	    for(int i=0;i<width;i++){
@@ -128,7 +142,7 @@ class Dijkstra{
 	    }
 	    System.out.println("");
 	}
-
+	
 	System.out.println("Caminhos");
 	for(int j=0;j<height;j++){
 	    for(int i=0;i<width;i++){
@@ -136,10 +150,47 @@ class Dijkstra{
 	    }
 	    System.out.println("");
 	}
-		
+	*/	
     }
-    public void returnPath(int x, int y){
+    public void returnPath(int x, int y,int[] vx,int[] vy,int[] mylength){
 	//retorna o path dada a posição do mouse
+    	int length =0;
+    	int myx = x;
+    	int myy = y;
+    	int nextx;
+    	int nexty;
+    	do{ //while we haven't found the seed	
+    		length++;
+    		nextx = whereFrom[toIndex(myx,myy)]%width;
+    		nexty = whereFrom[toIndex(myx,myy)]/width;
+    		myx = nextx;
+    		myy = nexty;
+    		
+    	}while (!((myx==sx)&&(myy==sy)));
+    	
+    	mylength[0] = length;
+    	
+    	//add points to vector
+    	myx=x;
+    	myy=y;
+    	int count=0;
+    	vx[0]=myx;//add last points
+    	vy[0]=myy; 
+    	do{ //while we haven't found the seed	    	
+    		nextx = whereFrom[toIndex(myx,myy)]%width;
+    		nexty = whereFrom[toIndex(myx,myy)]/width;
+    		
+    		count++;
+    		vx[count]=nextx;
+    		vy[count]=nexty; 
+    		
+    		myx = nextx;
+    		myy = nexty;
+    		
+    	}while (!((myx==sx)&&(myy==sy)));
+    	
+    	return;    		    	
+    	
     }
     public static void main(String[] args){
 

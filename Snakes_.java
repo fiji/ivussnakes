@@ -11,16 +11,20 @@ import ij.process.ImageProcessor;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Polygon;
-import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 
-public class Snakes_ implements PlugInFilter, MouseListener {
+public class Snakes_ implements PlugInFilter, MouseListener, MouseMotionListener {
 	
+	final int IDLE = 0;
+	final int WIRE = 1;
 	
     ImagePlus img;
     ImageCanvas canvas;
-
+    int width, height;
+    int state;
+    
     Dijkstra dj;
 
 
@@ -42,6 +46,12 @@ public class Snakes_ implements PlugInFilter, MouseListener {
 			canvas.removeMouseListener(canvas.getMouseListeners()[i]);
 		}
 		canvas.addMouseListener(this);
+		canvas.addMouseMotionListener(this);
+		
+		state = IDLE;
+		
+		width = ip.getWidth();
+		height = ip.getHeight();
 		
 		/**
 		 * This part will remove the old toolbar
@@ -64,8 +74,9 @@ public class Snakes_ implements PlugInFilter, MouseListener {
 		
 		
 		
-		
-		byte[] pixels = (byte[])ip.getPixels();
+		//invert pixels 
+		//REMOVE ME
+		/*
 		int width = ip.getWidth();
 		Rectangle r = ip.getRoi();
 		int offset, i;
@@ -75,12 +86,19 @@ public class Snakes_ implements PlugInFilter, MouseListener {
 		        i = offset + x;
 		        pixels[i] = (byte)(255-pixels[i]);
 		    }
-		}
+		}*/
+		byte[] pixels = (byte[])ip.getPixels();
 		
 		//initializing DIJKSTRA
 	        dj = new Dijkstra (pixels,ip.getWidth(),ip.getHeight());
 
-
+			//int x = e.getX();
+			//int y = e.getY();
+			//int offscreenX = canvas.offScreenX(x);
+			//int offscreenY = canvas.offScreenY(y);
+			//IJ.write("mousePressed: "+offscreenX+","+offscreenY);
+			//System.out.println("mousePressed: "+offscreenX+","+offscreenY);
+			
 	}
 	
 	void showAbout() {
@@ -93,39 +111,60 @@ public class Snakes_ implements PlugInFilter, MouseListener {
 	}
 
 	public void mouseClicked(MouseEvent e) {
-		int x = e.getX();
-		int y = e.getY();
-		int offscreenX = canvas.offScreenX(x);
-		int offscreenY = canvas.offScreenY(y);
-		IJ.write("mousePressed: "+offscreenX+","+offscreenY);
-		System.out.println("mousePressed: "+offscreenX+","+offscreenY);
-		dj.setPoint(x,y);
-		Polygon p = new Polygon();
-		p.addPoint(e.getX()+10,e.getY()+10);
-		p.addPoint(e.getX()+20,e.getY()+20);
-		p.addPoint(e.getX()+20,e.getY()+10);
-		PolygonRoi a = new PolygonRoi(p,Roi.POLYGON);
-		img.setRoi(a);
 				
 	}
 
 	public void mousePressed(MouseEvent e) {
-		// TODO Auto-generated method stub
+		if (state==IDLE){
+			dj.setPoint(e.getX(),e.getY());	
+			IJ.write("Dijkstra Point Set");
+			state = WIRE;
+		}
+		else if(state == WIRE){
+			state = IDLE;
+		}
 		
 	}
 
 	public void mouseReleased(MouseEvent e) {
 		// TODO Auto-generated method stub
+
 		
 	}
 
 	public void mouseEntered(MouseEvent e) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	public void mouseExited(MouseEvent e) {
 		// TODO Auto-generated method stub
+		
+	}
+
+
+	public void mouseDragged(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	public void mouseMoved(MouseEvent e) {
+		// TODO Auto-generated method stub
+		IJ.write("Mouse moving with x at " + e.getX());
+		if(state==WIRE){
+			int[] vx = new int[width*height];
+			int[] vy = new int[width*height];
+			int[] size = new int[1];
+			dj.returnPath(e.getX(),e.getY(),vx,vy,size);
+			for(int i=0;i< size[0];i++){
+				IJ.write(i+ ": X " + vx[i]+" Y "+ vy[i]);
+			}
+			Polygon p = new Polygon(vx,vy,size[0]);				
+			PolygonRoi a = new PolygonRoi(p,Roi.FREELINE);		
+			img.setRoi(a);
+		}
+		
 		
 	}
 
