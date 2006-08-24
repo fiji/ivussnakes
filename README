@@ -1,0 +1,3 @@
+Precisa alterar a função update costs.
+Eu adicionei + 1 para todos os pontos, inclusive as diagonais. Para as diagonais, deveria-se colocar raiz de dois (ou aproximar?).
+Mas está legal assim,eheh

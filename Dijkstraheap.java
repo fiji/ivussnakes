@@ -56,9 +56,26 @@ class Dijkstraheap{
 	visited[toIndex(x,y)] = true;
 	pixelCosts.poll();
 
+	//upper right
+	if((x< width-1)&&(y>0)){
+	    pixelCosts.add(new PixelNode(toIndex(x+1,y-1),1+ mycost+edgeCost(x,y,x+1,y-1),toIndex(x,y)));	    
+	}
+	//upper left
+	if((x>0)&&(y>0)){
+	    pixelCosts.add(new PixelNode(toIndex(x-1,y-1),1+ mycost+edgeCost(x,y,x-1,y-1),toIndex(x,y)));	    
+	}
+	//down right
+	if((x< width-1)&&(y<height-1)){
+	    pixelCosts.add(new PixelNode(toIndex(x+1,y+1),1+ mycost+edgeCost(x,y,x+1,y+1),toIndex(x,y)));	    
+	}
+	//down left
+	if((x>0)&&(y<height-1)){
+	    pixelCosts.add(new PixelNode(toIndex(x-1,y+1),1+ mycost+edgeCost(x,y,x-1,y+1),toIndex(x,y)));	    
+	}
+
 	//update left cost
 	if(x>0){
-	    PixelNode novo = new PixelNode(toIndex(x-1,y), mycost+edgeCost(x,y,x-1,y),toIndex(x,y));
+	    PixelNode novo = new PixelNode(toIndex(x-1,y),1+ mycost+edgeCost(x,y,x-1,y),toIndex(x,y));
 	    try{
 		pixelCosts.add(novo);
 	    }
@@ -69,16 +86,16 @@ class Dijkstraheap{
 	}
 	//update right cost
 	if(x<width-1){
-	    pixelCosts.add(new PixelNode(toIndex(x+1,y), mycost+edgeCost(x,y,x+1,y),toIndex(x,y)));
+	    pixelCosts.add(new PixelNode(toIndex(x+1,y),1+ mycost+edgeCost(x,y,x+1,y),toIndex(x,y)));
 	}
 	
 	//update up cost
 	if(y>0){
-	    pixelCosts.add(new PixelNode(toIndex(x,y-1), mycost+edgeCost(x,y,x,y-1),toIndex(x,y)));
+	    pixelCosts.add(new PixelNode(toIndex(x,y-1),1+ mycost+edgeCost(x,y,x,y-1),toIndex(x,y)));
 	}
 	//update down cost
 	if(y<height-1){
-	    pixelCosts.add(new PixelNode(toIndex(x,y+1), mycost+edgeCost(x,y,x,y+1),toIndex(x,y)));
+	    pixelCosts.add(new PixelNode(toIndex(x,y+1),1+ mycost+edgeCost(x,y,x,y+1),toIndex(x,y)));
 	}
     }
 
