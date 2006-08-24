@@ -1,4 +1,5 @@
 import ij.IJ;
+
 import ij.ImagePlus;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
@@ -17,6 +18,8 @@ import java.awt.event.MouseMotionListener;
 
 public class Snakes_ implements PlugInFilter, MouseListener, MouseMotionListener {
 	
+	
+	
 	final int IDLE = 0;
 	final int WIRE = 1;
 	
@@ -25,10 +28,11 @@ public class Snakes_ implements PlugInFilter, MouseListener, MouseMotionListener
     int width, height;
     int state;
     
-    Dijkstra dj;
+    Dijkstraheap dj;
 
 
 	public int setup(String arg, ImagePlus imp) {
+			
 		
 		this.img = imp;
 		if (arg.equals("about")) {
@@ -90,7 +94,7 @@ public class Snakes_ implements PlugInFilter, MouseListener, MouseMotionListener
 		byte[] pixels = (byte[])ip.getPixels();
 		
 		//initializing DIJKSTRA
-	        dj = new Dijkstra (pixels,ip.getWidth(),ip.getHeight());
+	        dj = new Dijkstraheap (pixels,ip.getWidth(),ip.getHeight());
 
 			//int x = e.getX();
 			//int y = e.getY();
