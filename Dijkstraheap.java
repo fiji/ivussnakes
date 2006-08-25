@@ -45,37 +45,39 @@ class Dijkstraheap{
 	}
     }    
     //returns de cost of going from sx,sy to dx,dy
-    private int edgeCost(int sx,int sy,int dx,int dy){
-	return (Math.abs((imagePixels[toIndex(sx,sy)]&0xff) - (imagePixels[toIndex(dx,dy)]&0xff)));
+    private double edgeCost(int sx,int sy,int dx,int dy){
+	return (Math.abs((imagePixels[toIndex(sx,sy)]&0xff) - (imagePixels[toIndex(dx,dy)]&0xff))+
+		5*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy))
+		);
 
     }
     //updates Costs and Paths for a given point
     //only actuates over North, South, East and West directions
-    private void updateCosts(int x,int y,int mycost){
+    private void updateCosts(int x,int y,double mycost){
 
 	visited[toIndex(x,y)] = true;
 	pixelCosts.poll();
 
 	//upper right
 	if((x< width-1)&&(y>0)){
-	    pixelCosts.add(new PixelNode(toIndex(x+1,y-1),1+ mycost+edgeCost(x,y,x+1,y-1),toIndex(x,y)));	    
+	    pixelCosts.add(new PixelNode(toIndex(x+1,y-1), mycost+edgeCost(x,y,x+1,y-1),toIndex(x,y)));	    
 	}
 	//upper left
 	if((x>0)&&(y>0)){
-	    pixelCosts.add(new PixelNode(toIndex(x-1,y-1),1+ mycost+edgeCost(x,y,x-1,y-1),toIndex(x,y)));	    
+	    pixelCosts.add(new PixelNode(toIndex(x-1,y-1), mycost+edgeCost(x,y,x-1,y-1),toIndex(x,y)));	    
 	}
 	//down right
 	if((x< width-1)&&(y<height-1)){
-	    pixelCosts.add(new PixelNode(toIndex(x+1,y+1),1+ mycost+edgeCost(x,y,x+1,y+1),toIndex(x,y)));	    
+	    pixelCosts.add(new PixelNode(toIndex(x+1,y+1), mycost+edgeCost(x,y,x+1,y+1),toIndex(x,y)));	    
 	}
 	//down left
 	if((x>0)&&(y<height-1)){
-	    pixelCosts.add(new PixelNode(toIndex(x-1,y+1),1+ mycost+edgeCost(x,y,x-1,y+1),toIndex(x,y)));	    
+	    pixelCosts.add(new PixelNode(toIndex(x-1,y+1), mycost+edgeCost(x,y,x-1,y+1),toIndex(x,y)));	    
 	}
 
 	//update left cost
 	if(x>0){
-	    PixelNode novo = new PixelNode(toIndex(x-1,y),1+ mycost+edgeCost(x,y,x-1,y),toIndex(x,y));
+	    PixelNode novo = new PixelNode(toIndex(x-1,y), mycost+edgeCost(x,y,x-1,y),toIndex(x,y));
 	    try{
 		pixelCosts.add(novo);
 	    }
@@ -86,16 +88,16 @@ class Dijkstraheap{
 	}
 	//update right cost
 	if(x<width-1){
-	    pixelCosts.add(new PixelNode(toIndex(x+1,y),1+ mycost+edgeCost(x,y,x+1,y),toIndex(x,y)));
+	    pixelCosts.add(new PixelNode(toIndex(x+1,y), mycost+edgeCost(x,y,x+1,y),toIndex(x,y)));
 	}
 	
 	//update up cost
 	if(y>0){
-	    pixelCosts.add(new PixelNode(toIndex(x,y-1),1+ mycost+edgeCost(x,y,x,y-1),toIndex(x,y)));
+	    pixelCosts.add(new PixelNode(toIndex(x,y-1), mycost+edgeCost(x,y,x,y-1),toIndex(x,y)));
 	}
 	//update down cost
 	if(y<height-1){
-	    pixelCosts.add(new PixelNode(toIndex(x,y+1),1+ mycost+edgeCost(x,y,x,y+1),toIndex(x,y)));
+	    pixelCosts.add(new PixelNode(toIndex(x,y+1), mycost+edgeCost(x,y,x,y+1),toIndex(x,y)));
 	}
     }
 
@@ -251,14 +253,14 @@ class Dijkstraheap{
 
 class PixelNode implements Comparable<PixelNode> {
     private int myIndex;
-    private int myDistance;
+    private double myDistance;
     private int whereFrom;
-    public PixelNode(int index, int distance, int whereFrom){
+    public PixelNode(int index, double distance, int whereFrom){
 	myIndex = index;
 	myDistance = distance;
 	this.whereFrom = whereFrom;
     }
-    public int getDistance(){
+    public double getDistance(){
 	return myDistance;
     }
     public int getIndex(){
@@ -269,6 +271,6 @@ class PixelNode implements Comparable<PixelNode> {
     }
 
     public int compareTo(PixelNode other){
-	return (myDistance - other.getDistance());
+	return (int)((myDistance - other.getDistance()+0.5));//plus 0.5 to round
     } 
 }
