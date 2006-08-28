@@ -5,6 +5,13 @@ class Dijkstraheap{
     byte[] imagePixels; //stores Pixels from original image
     int[] imageCosts; //stores Costs for every pixel
     PriorityQueue<PixelNode> pixelCosts;
+    double[] gradientx; //stores image gradient modulus 
+    double[] gradienty; //stores image gradient modulus 
+    //it is oriented: X = LEFT TO RIGHT
+    //                Y = UP   TO DOWN
+    double[] gradientr; //stores image gradient RESULTANT modulus 
+    double grmin;//gradient global minimum
+    double grmax;//gradient global maximum
 
     int[] whereFrom;  //stores where from path started
     boolean[] visited; //stores whether the node was marked or not
@@ -19,7 +26,87 @@ class Dijkstraheap{
     private int toIndex(int x,int y){
 	return (y*width+x);
     }
-    
+
+    //initializes gradient vector
+    private void initGradient(){
+	gradientx = new double[height*width];
+	gradienty = new double[height*width];
+	gradientr = new double[height*width];
+	//Using sobel
+	//for gx convolutes the following matrix
+	//   
+	//     |-1 0 1|
+	//Gx = |-2 0 2|
+	//     |-1 0 1|
+
+	for(int i=0;i<width;i++){
+	    for(int j=0;j<height;j++){
+		if((i>0)&&(i<width-1)&&(j>0)&&(j<height-1)){
+		    gradientx[toIndex(i,j)] = 
+			-1*(imagePixels[toIndex(i-1,j-1)] & 0xff) +1*(imagePixels[toIndex(i+1,j-1)] & 0xff)
+			-2*(imagePixels[toIndex(i-1,j  )] & 0xff) +2*(imagePixels[toIndex(i+1,j  )] & 0xff)
+			-1*(imagePixels[toIndex(i-1,j+1)] & 0xff) +1*(imagePixels[toIndex(i+1,j+1)] & 0xff);
+		}
+	    }
+	}
+
+	//for gy convolutes the following matrix (remember y is zero at the top!)
+	//
+	//     |-1 -2 -1| 
+	//Gy = | 0  0  0|
+	//     |+1 +2 +1|
+	//
+	for(int i=0;i<width;i++){
+	    for(int j=0;j<height;j++){
+		if((i>0)&&(i<width-1)&&(j>0)&&(j<height-1)){
+		    gradienty[toIndex(i,j)] = 
+			+1*(imagePixels[toIndex(i-1,j-1)] & 0xff) -1*(imagePixels[toIndex(i-1,j+1)] & 0xff)
+			+2*(imagePixels[toIndex(i  ,j-1)] & 0xff) -2*(imagePixels[toIndex(i  ,j+1)] & 0xff)
+			+1*(imagePixels[toIndex(i+1,j-1)] & 0xff) -1*(imagePixels[toIndex(i+1,j+1)] & 0xff);
+		}
+	    }
+	}
+	for(int i=0;i<width;i++){
+	    for(int j=0;j<height;j++){
+		if((i>0)&&(i<width-1)&&(j>0)&&(j<height-1)){
+		    //Math.hypot returns sqrt(x^2 +y^2) without intermediate overflow or underflow.
+		    gradientr[toIndex(i,j)] = Math.hypot( gradientx[toIndex(i,j)],gradienty[toIndex(i,j)]);
+		}
+	    }
+	}
+
+	grmin = gradientr[0];
+	grmax = gradientr[0];
+	for(int i=0;i< height*width;i++){
+	    if(gradientr[i]<grmin) grmin=gradientr[i];
+	    if(gradientr[i]>grmax) grmax=gradientr[i];
+	}
+    }
+
+    public void getGradientX(double[] mat){
+	for(int i=0;i<height;i++){
+	    for(int j=0;j<width;j++){
+		//		System.out.println(gradientx[(i*width+j)]);
+		mat[i*width+j]= gradientx[i*width+j];
+	    }
+	}
+    }
+    public void getGradientY(double[] mat){
+	for(int i=0;i<height;i++){
+	    for(int j=0;j<width;j++){
+		//		System.out.println(gradientx[(i*width+j)]);
+		mat[i*width+j]= gradienty[i*width+j];
+	    }
+	}
+    }
+    public void getGradientR(double[] mat){
+	for(int i=0;i<height;i++){
+	    for(int j=0;j<width;j++){
+		//		System.out.println(gradientx[(i*width+j)]);
+		mat[i*width+j]= gradientr[i*width+j];
+	    }
+	}
+    }
 
     //initializes Dijkstra with the image
     public Dijkstraheap(byte[] image,int x, int y){
@@ -29,10 +116,8 @@ class Dijkstraheap{
 	pixelCosts = new PriorityQueue<PixelNode>();
 	whereFrom   = new int [x*y];
 	visited     = new boolean[x*y];
-
 	width  = x;
 	height = y;
-	
 	//copy image matrice
 	for(int j=0;j<y;j++){
 	    for(int i=0;i<x;i++){
@@ -43,13 +128,14 @@ class Dijkstraheap{
 	    }
 	    //	    System.out.println("");
 	}
+	initGradient();	
+
     }    
     //returns de cost of going from sx,sy to dx,dy
     private double edgeCost(int sx,int sy,int dx,int dy){
-	return (Math.abs((imagePixels[toIndex(sx,sy)]&0xff) - (imagePixels[toIndex(dx,dy)]&0xff))+
-		5*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy))
-		);
-
+	return (Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy))* 
+		(1 - ((gradientr[toIndex(dx,dy)]-grmin)/(grmax-grmin))));
+	
     }
     //updates Costs and Paths for a given point
     //only actuates over North, South, East and West directions
@@ -274,3 +360,4 @@ class PixelNode implements Comparable<PixelNode> {
 	return (int)((myDistance - other.getDistance()+0.5));//plus 0.5 to round
     } 
 }
+
