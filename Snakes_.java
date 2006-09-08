@@ -271,6 +271,7 @@ public class Snakes_ implements PlugInFilter, MouseListener, MouseMotionListener
 			int[] vx = new int[width*height];
 			int[] vy = new int[width*height];
 			int[] size = new int[1];
+
 			dj.returnPath(e.getX(),e.getY(),vx,vy,size);
 			/*			for(int i=0;i< size[0];i++){
 				IJ.write(i+ ": X " + vx[i]+" Y "+ vy[i]);

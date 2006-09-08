@@ -70,10 +70,14 @@ class Dijkstraheap{
 	    for(int j=0;j<height;j++){
 		if((i>0)&&(i<width-1)&&(j>0)&&(j<height-1)){
 		    //Math.hypot returns sqrt(x^2 +y^2) without intermediate overflow or underflow.
-		    gradientr[toIndex(i,j)] = Math.hypot( gradientx[toIndex(i,j)],gradienty[toIndex(i,j)]);
+		    
+		    gradientr[toIndex(i,j)] = Math.sqrt( gradientx[toIndex(i,j)]*gradientx[toIndex(i,j)]+
+							 gradienty[toIndex(i,j)]*gradienty[toIndex(i,j)]);
+		    
 		}
 	    }
 	}
+
 
 	grmin = gradientr[0];
 	grmax = gradientr[0];
@@ -81,6 +85,8 @@ class Dijkstraheap{
 	    if(gradientr[i]<grmin) grmin=gradientr[i];
 	    if(gradientr[i]>grmax) grmax=gradientr[i];
 	}
+
+
     }
 
     public void getGradientX(double[] mat){
@@ -133,17 +139,78 @@ class Dijkstraheap{
     }    
     //returns de cost of going from sx,sy to dx,dy
     private double edgeCost(int sx,int sy,int dx,int dy){
-	return (Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy))* 
+	//fg is the Gradient Magnitude
+
+	//we are dividing by sqrt(2) so that the value won't pass 1
+	//as is stated in United Snakes formule 36
+	double fg = (1.0/Math.sqrt(2)*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy))* 
 		(1 - ((gradientr[toIndex(dx,dy)]-grmin)/(grmax-grmin))));
+	if(grmin==grmax) 
+	    fg= (1.0/Math.sqrt(2)*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy)));
+
+	//	System.out.println("Fg " + fg +" gradientr " + gradientr[toIndex(dx,dy)] + " grmin " + grmin + " grmax " + grmax);
+	//fd id the Gradient Direction
+
+	//CHECK ME OUT: The part of fd has not been much tested
+	//if someone wishes to spend some time testing it, it'd be a great idea
+
+	//Dp is the unit vector of the gradient direction at pixel p (sx,sy)
+	//this is defined near formule 37 in United Snakes
+	Vector2d GradVector = new Vector2d(gradientx[toIndex(sx,sy)],gradienty[toIndex(sx,sy)]);
+	Vector2d Dp = GradVector.getUnit();
+	//DpN is the normal vector to Dp
+	Vector2d DpN = new Vector2d(Dp.getNormal());
+	//Lpq is the normalized biderectional link between pixels p and q (United Snakes formule 38)
+	Vector2d Lpq = new Vector2d();
+	Vector2d p = new Vector2d(sx,sy);
+	Vector2d q = new Vector2d(dx,dy);
+	if(DpN.dotProduct( q.sub(p)) >=0 ){
+	    Lpq = q.sub(p).getUnit(); // (q-p)/||p-q|| 
+	}
+	else{	    
+	    Lpq = p.sub(q).getUnit(); // (p-q)/||p-q||
+	}
+	//dppq = DpN . Lpq 
+	double dppq = DpN.dotProduct(Lpq);
+	//dqpq = Lpq . DpN
+	Vector2d GradVectorq = new Vector2d(gradientx[toIndex(dx,dy)],gradienty[toIndex(dx,dy)]);
+	Vector2d Dq = GradVectorq.getUnit();
+	Vector2d DqN = new Vector2d(Dq.getNormal());
+	double dqpq = Lpq.dotProduct(DqN);
+
+	//United Snakes formule 37
+	//I have found a problem here... 
+	//When the gradient is near zero in the place, when getting the unit vector, 
+	//it becomes NaN, because we are dividing something for about zero... 
+	//but the value of fd should be as high as possible (we are over an edge)
+	//so, when asking for unit vectors, we check for components x and y. If they are
+	//too small, we return a vector (1,0)
+	if((Math.abs(GradVector.getX())<0.0000001)&&(Math.abs(GradVector.getY())<0.0000001))
+	    dppq = 0.0;
+	if((Math.abs(GradVectorq.getX())<0.0000001)&&(Math.abs(GradVectorq.getY())<0.0000001))
+	    dqpq = 0.0;
+	    
+	
+	double fd = 2.0/(3*Math.PI)*(Math.acos(dppq)+Math.acos(dqpq));	    
+
+	/*		System.out.println("Fd "+ fd + " Fg " + fg + " acos dppq " + Math.acos(dppq) + " acos dqpq " + Math.acos(dqpq)
+			   + " Dp (" + Dp.getX() + "," + Dp.getY() +") DpN (" + DpN.getX() +"," + DpN.getY() + ")"  
+			   + " p (" +p.getX()+ ","+p.getY() + ") q(" +q.getX()+","+q.getY()+")" 
+			   + "Gradp(" + gradientx[toIndex(sx,sy)]+ ","+gradienty[toIndex(sx,sy)]+ ")" 
+			   + "Gradq(" + gradientx[toIndex(dx,dy)]+ ","+gradienty[toIndex(dx,dy)]);*/
+
+
+	return .8*fg+0.2*fd;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
 	
     }
     //updates Costs and Paths for a given point
-    //only actuates over North, South, East and West directions
+    //actuates over 8 directions N, NE, E, SE, S, SW, W, NW
     private void updateCosts(int x,int y,double mycost){
 
 	visited[toIndex(x,y)] = true;
 	pixelCosts.poll();
 
+	mycost = mycost;
 	//upper right
 	if((x< width-1)&&(y>0)){
 	    pixelCosts.add(new PixelNode(toIndex(x+1,y-1), mycost+edgeCost(x,y,x+1,y-1),toIndex(x,y)));	    
@@ -163,14 +230,7 @@ class Dijkstraheap{
 
 	//update left cost
 	if(x>0){
-	    PixelNode novo = new PixelNode(toIndex(x-1,y), mycost+edgeCost(x,y,x-1,y),toIndex(x,y));
-	    try{
-		pixelCosts.add(novo);
-	    }
-	    catch(Exception e){
-		System.out.println(e);
-	    }
-
+	    pixelCosts.add(new PixelNode(toIndex(x-1,y), mycost+edgeCost(x,y,x-1,y),toIndex(x,y)));	    
 	}
 	//update right cost
 	if(x<width-1){
@@ -181,7 +241,7 @@ class Dijkstraheap{
 	if(y>0){
 	    pixelCosts.add(new PixelNode(toIndex(x,y-1), mycost+edgeCost(x,y,x,y-1),toIndex(x,y)));
 	}
-	//update down cost
+	    //update down cost
 	if(y<height-1){
 	    pixelCosts.add(new PixelNode(toIndex(x,y+1), mycost+edgeCost(x,y,x,y+1),toIndex(x,y)));
 	}
@@ -231,6 +291,8 @@ class Dijkstraheap{
 	//	nextX = nextIndex%width;
 	//	nextY = nextIndex/width;
 	int debugcount = 0;
+
+	
 	while(pixelCosts.peek()!=null){
 	    //	    System.out.println("Debug count " + debugcount++);
 	    
@@ -241,10 +303,14 @@ class Dijkstraheap{
 	    nextY = nextIndex/width;
 	    whereFrom[nextIndex] =((PixelNode)pixelCosts.peek()).getWhereFrom();
 
-	    /*System.out.println("Head " + nextIndex + " Value " + ((PixelNode) pixelCosts.peek()).getDistance() + " From " + ((PixelNode) pixelCosts.peek()).getWhereFrom());*/
+	    
+	    /*	    System.out.println("Head (" + nextX + ","+nextY +") Value " + ((PixelNode) pixelCosts.peek()).getDistance() + " From " + ((PixelNode) pixelCosts.peek()).getWhereFrom());*/
+
+
 		
 	    updateCosts(nextX, nextY, ((PixelNode) pixelCosts.peek()).getDistance());
 
+	    //removes pixels that are already visited and went to the queue
 	    while(true){
 		if( pixelCosts.peek() == null )
 		    break;
@@ -297,9 +363,11 @@ class Dijkstraheap{
     	int count=0;
     	vx[0]=myx;//add last points
     	vy[0]=myy; 
+	//	System.out.println("Caminho ");
     	do{ //while we haven't found the seed	    	
     		nextx = whereFrom[toIndex(myx,myy)]%width;
     		nexty = whereFrom[toIndex(myx,myy)]/width;
+		//System.out.println("("+nextx+","+nexty+")");
     		
     		count++;
     		vx[count]=nextx;
@@ -321,11 +389,17 @@ class Dijkstraheap{
 	// 1  70  2  2
 	// 1   1  1  1
 
-	byte[] teste = { 2, 70, 4,0,
-			 1, 70, 2,2,
+	byte[] teste = { 1, 1, 1,1,
+			 1, 1, 1,1,
 			 1, 1, 1, 1};
 	Dijkstraheap dj = new Dijkstraheap(teste,4,3);
-	dj.setPoint(0,0);
+	dj.setPoint(1,1);
+	int[] a = new int[10000];
+	int[] b = new int[10000];
+	int[] c = new int[10];
+
+	dj.returnPath(3,0,a,b,c);
+
     }
 }
 
@@ -357,7 +431,13 @@ class PixelNode implements Comparable<PixelNode> {
     }
 
     public int compareTo(PixelNode other){
-	return (int)((myDistance - other.getDistance()+0.5));//plus 0.5 to round
+	if( myDistance < other.getDistance()) 
+	    return -1;
+	else if( myDistance > other.getDistance()) 
+	    return +1;
+	else 
+	    return 0;
+	//	return (int)((myDistance - other.getDistance()));//plus 0.5 to round
     } 
 }
 
