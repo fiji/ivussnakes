@@ -1,6 +1,10 @@
 import java.util.PriorityQueue;
 
-class Dijkstraheap{
+/**
+ * @author baggio
+ *
+ */
+class Dijkstraheap implements Runnable{
 
     byte[] imagePixels; //stores Pixels from original image
     int[] imageCosts; //stores Costs for every pixel
@@ -18,6 +22,11 @@ class Dijkstraheap{
     int width;
     int height;
     int sx,sy; //seed x and seed y, weight zero for this point
+
+    int tx,ty;//thread x and y passed as parameters
+
+    Thread myThread;
+    boolean myThreadRuns;//flag for thread state
      
 
     static int INF = 0x7FFFFFFF; //maximum integer
@@ -135,6 +144,8 @@ class Dijkstraheap{
 	    //	    System.out.println("");
 	}
 	initGradient();	
+	//inits the thread
+	myThread = new Thread(this);
 
     }    
     //returns de cost of going from sx,sy to dx,dy
@@ -143,8 +154,9 @@ class Dijkstraheap{
 
 	//we are dividing by sqrt(2) so that the value won't pass 1
 	//as is stated in United Snakes formule 36
+	
 	double fg = (1.0/Math.sqrt(2)*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy))* 
-		(1 - ((gradientr[toIndex(dx,dy)]-grmin)/(grmax-grmin))));
+	    (1 - ((gradientr[toIndex(dx,dy)]-grmin)/(grmax-grmin))));
 	if(grmin==grmax) 
 	    fg= (1.0/Math.sqrt(2)*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy)));
 
@@ -210,7 +222,7 @@ class Dijkstraheap{
 	visited[toIndex(x,y)] = true;
 	pixelCosts.poll();
 
-	mycost = mycost;
+//	mycost = mycost;
 	//upper right
 	if((x< width-1)&&(y>0)){
 	    pixelCosts.add(new PixelNode(toIndex(x+1,y-1), mycost+edgeCost(x,y,x+1,y-1),toIndex(x,y)));	    
@@ -265,8 +277,121 @@ class Dijkstraheap{
 	return ans;
     }
 
+    public void returnPath(int x, int y,int[] vx,int[] vy,int[] mylength){
+	//retorna o path dada a posição do mouse
+    	int[] tempx = new int[width*height];
+		int[] tempy = new int[width*height];
+    	
+    	if(visited[toIndex(x,y)]==false){
+    		//attempt to get path before creating it 
+    		//this might occur because of the thread
+    		mylength[0]=0;
+    		return;
+    	}
+    	int length =0;
+    	int myx = x;
+    	int myy = y;
+    	int nextx;
+    	int nexty;
+    	do{ //while we haven't found the seed	
+    		length++;
+    		nextx = whereFrom[toIndex(myx,myy)]%width;
+    		nexty = whereFrom[toIndex(myx,myy)]/width;
+    		myx = nextx;
+    		myy = nexty;
+    		
+    	}while (!((myx==sx)&&(myy==sy)));
+    	
+    	mylength[0] = length;
+    	
+    	//add points to vector
+    	myx=x;
+    	myy=y;
+    	int count=0;
+    	tempx[0]=myx;//add last points
+    	tempy[0]=myy; 
+	//	System.out.println("Caminho ");
+    	do{ //while we haven't found the seed	    	
+    		nextx = whereFrom[toIndex(myx,myy)]%width;
+    		nexty = whereFrom[toIndex(myx,myy)]/width;
+		//System.out.println("("+nextx+","+nexty+")");
+    		
+    		count++;
+    		tempx[count]=nextx;
+    		tempy[count]=nexty; 
+    		
+    		myx = nextx;
+    		myy = nexty;
+    		
+    	}while (!((myx==sx)&&(myy==sy)));
+    	//path is from last point to first
+    	//we need to invert it
+    	for(int i=0;i<=count;i++){
+    		vx[i]= tempx[count-i];
+    		vy[i]=tempy[count-i];    	
+    	}		    	
+    	
+    	return;    		    	
+    	
+    }
+    public static void main(String[] args){
+
+	//test
+	//matrice
+	// 2  70  4  0
+	// 1  70  2  2
+	// 1   1  1  1
+
+	byte[] teste = { 1, 1, 1,1,
+			 1, 1, 1,1,
+			 1, 1, 1, 1};
+	Dijkstraheap dj = new Dijkstraheap(teste,4,3);
+	dj.setPoint(1,1);
+	int[] a = new int[10000];
+	int[] b = new int[10000];
+	int[] c = new int[10];
+
+	dj.returnPath(3,0,a,b,c);
+
+	//	new Thread(dj).start();
+
+	//TSetPoint tsetpoint = new TSetPoint(1);
+	//TSetPoint tsetpoint2 = new TSetPoint(2);
+	//	new Thread(tsetpoint).run();
+	//tsetpoint.run();
+	//tsetpoint2.start();
+
+	/*	while(true){
+	    System.out.println("Go");
+	    }*/
+	
+		
+
+    }
+
     //set point to start Dijkstra
     public void setPoint(int x, int y){
+	    	
+    	myThreadRuns=false;    	    	
+    	try {
+			myThread.join();
+		} catch (InterruptedException e) {
+			System.out.println("Bogus Exception");
+			e.printStackTrace();
+		}
+    	
+    	tx = x;	
+    	ty = y;	
+    	myThreadRuns = true;
+    	myThread = new Thread(this);
+		myThread.start();		
+
+    }    
+    public void run(){
+	//runs set point in parallel
+	int x = tx;
+	int y = ty;
+
 	int nextIndex;
 	int nextX;
 	int nextY;
@@ -293,7 +418,7 @@ class Dijkstraheap{
 	int debugcount = 0;
 
 	
-	while(pixelCosts.peek()!=null){
+	while((pixelCosts.peek()!=null)&&(myThreadRuns)){
 	    //	    System.out.println("Debug count " + debugcount++);
 	    
 	    
@@ -319,6 +444,8 @@ class Dijkstraheap{
 		pixelCosts.poll();
 	    }
 	}
+	while(pixelCosts.peek()!=null)
+		pixelCosts.poll();
 	
 	System.out.println("Point set.......");
 	/*
@@ -337,70 +464,13 @@ class Dijkstraheap{
 	    }
 	    System.out.println("");
 	    }*/
-
+	
     }
-    public void returnPath(int x, int y,int[] vx,int[] vy,int[] mylength){
-	//retorna o path dada a posição do mouse
-    	int length =0;
-    	int myx = x;
-    	int myy = y;
-    	int nextx;
-    	int nexty;
-    	do{ //while we haven't found the seed	
-    		length++;
-    		nextx = whereFrom[toIndex(myx,myy)]%width;
-    		nexty = whereFrom[toIndex(myx,myy)]/width;
-    		myx = nextx;
-    		myy = nexty;
-    		
-    	}while (!((myx==sx)&&(myy==sy)));
-    	
-    	mylength[0] = length;
-    	
-    	//add points to vector
-    	myx=x;
-    	myy=y;
-    	int count=0;
-    	vx[0]=myx;//add last points
-    	vy[0]=myy; 
-	//	System.out.println("Caminho ");
-    	do{ //while we haven't found the seed	    	
-    		nextx = whereFrom[toIndex(myx,myy)]%width;
-    		nexty = whereFrom[toIndex(myx,myy)]/width;
-		//System.out.println("("+nextx+","+nexty+")");
-    		
-    		count++;
-    		vx[count]=nextx;
-    		vy[count]=nexty; 
-    		
-    		myx = nextx;
-    		myy = nexty;
-    		
-    	}while (!((myx==sx)&&(myy==sy)));
-    	
-    	return;    		    	
-    	
-    }
-    public static void main(String[] args){
 
-	//test
-	//matrice
-	// 2  70  4  0
-	// 1  70  2  2
-	// 1   1  1  1
 
-	byte[] teste = { 1, 1, 1,1,
-			 1, 1, 1,1,
-			 1, 1, 1, 1};
-	Dijkstraheap dj = new Dijkstraheap(teste,4,3);
-	dj.setPoint(1,1);
-	int[] a = new int[10000];
-	int[] b = new int[10000];
-	int[] c = new int[10];
+		    	
 
-	dj.returnPath(3,0,a,b,c);
 
-    }
 }
 
 
@@ -438,6 +508,7 @@ class PixelNode implements Comparable<PixelNode> {
 	else 
 	    return 0;
 	//	return (int)((myDistance - other.getDistance()));//plus 0.5 to round
-    } 
+    }
+
 }
 

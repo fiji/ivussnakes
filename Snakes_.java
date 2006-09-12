@@ -28,6 +28,14 @@ public class Snakes_ implements PlugInFilter, MouseListener, MouseMotionListener
     int state;
     ImagePlus lapzero;//image to visualize zero crossing laplacian
     
+	int[] selx; //selection x points
+	int[] sely; //selection y points
+	int selSize;//selection size
+	int[] tempx; //temporary selection x points
+	int[] tempy; //temporary selection y points
+	int tempSize; //temporary selection size
+	
+    
     Dijkstraheap dj;
     
 
@@ -212,6 +220,11 @@ public class Snakes_ implements PlugInFilter, MouseListener, MouseMotionListener
 		}
 		nova3.show();
 		nova3.updateAndDraw();
+		
+		//initializing selections
+		selx = new int[width*height];
+		sely = new int[width*height];
+		selSize = 0;
 
 			
 	}
@@ -231,7 +244,15 @@ public class Snakes_ implements PlugInFilter, MouseListener, MouseMotionListener
 
 	public void mousePressed(MouseEvent e) {
 		if (state==IDLE){
-			dj.setPoint(e.getX(),e.getY());	
+			dj.setPoint(e.getX(),e.getY());
+			
+			for(int i=0;i<tempSize;i++){
+				selx[selSize+i]=tempx[i];
+				sely[selSize+i]=tempy[i];
+				
+			}
+			selSize+=tempSize;
+				
 			IJ.write("Dijkstra Point Set");
 			state = WIRE;
 		}
@@ -271,14 +292,25 @@ public class Snakes_ implements PlugInFilter, MouseListener, MouseMotionListener
 			int[] vx = new int[width*height];
 			int[] vy = new int[width*height];
 			int[] size = new int[1];
+			
 
 			dj.returnPath(e.getX(),e.getY(),vx,vy,size);
 			/*			for(int i=0;i< size[0];i++){
 				IJ.write(i+ ": X " + vx[i]+" Y "+ vy[i]);
 				}*/
-			Polygon p = new Polygon(vx,vy,size[0]);				
+			for(int i=0;i<size[0];i++){
+				selx[i+selSize]= vx[i];
+				sely[i+selSize]= vy[i];
+			}
+			tempx = vx;
+			tempy = vy;
+			tempSize = size[0];
+			Polygon p = new Polygon(selx,sely,size[0]+selSize);				
 			PolygonRoi a = new PolygonRoi(p,Roi.FREELINE);		
 			img.setRoi(a);
+			if(size[0]==0)
+				IJ.showStatus("Please, wait. Still creating the LiveWire");
+				
 		}
 		
 		
