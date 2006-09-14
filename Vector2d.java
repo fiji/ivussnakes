@@ -62,6 +62,7 @@ class Vector2d {
     //returns the vector that is normal to this
     public Vector2d getNormal(){
 	Vector2d ans = new Vector2d(this.getY(),-this.getX());
+	
 	return ans;
     }
     public static void main(String args[]){

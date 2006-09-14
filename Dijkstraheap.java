@@ -1,3 +1,6 @@
+
+
+import java.awt.datatransfer.Clipboard;
 import java.util.PriorityQueue;
 
 /**
@@ -5,7 +8,9 @@ import java.util.PriorityQueue;
  *
  */
 class Dijkstraheap implements Runnable{
-
+	
+	
+	
     byte[] imagePixels; //stores Pixels from original image
     int[] imageCosts; //stores Costs for every pixel
     PriorityQueue<PixelNode> pixelCosts;
@@ -61,9 +66,9 @@ class Dijkstraheap implements Runnable{
 
 	//for gy convolutes the following matrix (remember y is zero at the top!)
 	//
-	//     |-1 -2 -1| 
+	//     |+1 +2 +1| 
 	//Gy = | 0  0  0|
-	//     |+1 +2 +1|
+	//     |-1 -2 -1|
 	//
 	for(int i=0;i<width;i++){
 	    for(int j=0;j<height;j++){
@@ -176,11 +181,17 @@ class Dijkstraheap implements Runnable{
 	Vector2d Lpq = new Vector2d();
 	Vector2d p = new Vector2d(sx,sy);
 	Vector2d q = new Vector2d(dx,dy);
-	if(DpN.dotProduct( q.sub(p)) >=0 ){
-	    Lpq = q.sub(p).getUnit(); // (q-p)/||p-q|| 
+	
+	//remember that y is upside down... we need to invert the y term in pq
+	
+	Vector2d myPQ = new Vector2d ( dx - sx, sy - dy);
+	
+	
+	if(DpN.dotProduct( myPQ ) >=0 ){
+	    Lpq = myPQ.getUnit(); // (q-p)/||p-q|| 
 	}
 	else{	    
-	    Lpq = p.sub(q).getUnit(); // (p-q)/||p-q||
+	    Lpq = myPQ.getUnit(); // (p-q)/||p-q||
 	}
 	//dppq = DpN . Lpq 
 	double dppq = DpN.dotProduct(Lpq);
@@ -198,21 +209,21 @@ class Dijkstraheap implements Runnable{
 	//so, when asking for unit vectors, we check for components x and y. If they are
 	//too small, we return a vector (1,0)
 	if((Math.abs(GradVector.getX())<0.0000001)&&(Math.abs(GradVector.getY())<0.0000001))
-	    dppq = 0.0;
+	    dppq = 0;
 	if((Math.abs(GradVectorq.getX())<0.0000001)&&(Math.abs(GradVectorq.getY())<0.0000001))
-	    dqpq = 0.0;
+	    dqpq = 0;
 	    
 	
 	double fd = 2.0/(3*Math.PI)*(Math.acos(dppq)+Math.acos(dqpq));	    
 
-	/*		System.out.println("Fd "+ fd + " Fg " + fg + " acos dppq " + Math.acos(dppq) + " acos dqpq " + Math.acos(dqpq)
+	/*	System.out.println("Fd "+ fd + " Fg " + fg + " acos dppq " + Math.acos(dppq) + " acos dqpq " + Math.acos(dqpq)
 			   + " Dp (" + Dp.getX() + "," + Dp.getY() +") DpN (" + DpN.getX() +"," + DpN.getY() + ")"  
-			   + " p (" +p.getX()+ ","+p.getY() + ") q(" +q.getX()+","+q.getY()+")" 
-			   + "Gradp(" + gradientx[toIndex(sx,sy)]+ ","+gradienty[toIndex(sx,sy)]+ ")" 
-			   + "Gradq(" + gradientx[toIndex(dx,dy)]+ ","+gradienty[toIndex(dx,dy)]);*/
+			   + " p (" +p.getX()+ ","+p.getY() + ") q(" +q.getX()+","+q.getY()+") " 
+			   + "Gradp(" + gradientx[toIndex(sx,sy)]+ ","+gradienty[toIndex(sx,sy)]+ ") " 
+			   + "Gradq(" + gradientx[toIndex(dx,dy)]+ ","+gradienty[toIndex(dx,dy)]+ ")");*/
 
 
-	return .8*fg+0.2*fd;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
+	return fd;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
 	
     }
     //updates Costs and Paths for a given point
@@ -326,9 +337,12 @@ class Dijkstraheap implements Runnable{
     	}while (!((myx==sx)&&(myy==sy)));
     	//path is from last point to first
     	//we need to invert it
+	//	System.out.println("Caminho ");
     	for(int i=0;i<=count;i++){
+
     		vx[i]= tempx[count-i];
     		vy[i]=tempy[count-i];    	
+		//System.out.println("( "+vx[i] + " , " + vy[i] + " )");
     	}		    	
     	
     	return;    		    	
@@ -342,16 +356,35 @@ class Dijkstraheap implements Runnable{
 	// 1  70  2  2
 	// 1   1  1  1
 
-	byte[] teste = { 1, 1, 1,1,
-			 1, 1, 1,1,
-			 1, 1, 1, 1};
-	Dijkstraheap dj = new Dijkstraheap(teste,4,3);
-	dj.setPoint(1,1);
+	byte[] teste = { 0,	0,	0,	0,	0,	0,	0,	61,	127,	127,
+			 0,	0,	0,	0,	0,	0,	0,	12,	127,	127,
+			 0,	0,	0,	0,	0,	0,	0,	12,	127,	127,
+			 0,	0,	0,	0,	0,	0,	0,	61,	127,	127,
+			 0,	0,	0,	0,	0,	0,	0,	126,	127,	127,
+			 0,	0,	0,	0,	0,	0,	75,	127,	127,	127,
+			 0,	0,	0,	0,	0,	82,	127,	127,	127,	127,
+			 25,	4,	25,	79,	126,	127,	127,	127,	127,	127,
+			 127,	127,	127,	127,	127,	127,	127,	127,	127,	127,
+			 127,	127,	127,	127,	127,	127,	127,	127,	127,	127};
+
+
+
+
+	Dijkstraheap dj = new Dijkstraheap(teste,10,10);
+	dj.setPoint(1,7);
 	int[] a = new int[10000];
 	int[] b = new int[10000];
 	int[] c = new int[10];
 
-	dj.returnPath(3,0,a,b,c);
+
+    	try {
+			dj.myThread.join();
+		} catch (InterruptedException e) {
+			System.out.println("Bogus Exception");
+			e.printStackTrace();			
+		}	
+
+	dj.returnPath(8,2,a,b,c);
 
 	//	new Thread(dj).start();
 
@@ -377,7 +410,7 @@ class Dijkstraheap implements Runnable{
 			myThread.join();
 		} catch (InterruptedException e) {
 			System.out.println("Bogus Exception");
-			e.printStackTrace();
+			e.printStackTrace();			
 		}
     	
     	tx = x;	
