@@ -53,10 +53,11 @@ class Dijkstraheap implements Runnable{
 	//Gx = |-2 0 2|
 	//     |-1 0 1|
 
+
 	for(int i=0;i<width;i++){
 	    for(int j=0;j<height;j++){
 		if((i>0)&&(i<width-1)&&(j>0)&&(j<height-1)){
-		    gradientx[toIndex(i,j)] = 
+		    gradientx[toIndex(i,j)] =
 			-1*(imagePixels[toIndex(i-1,j-1)] & 0xff) +1*(imagePixels[toIndex(i+1,j-1)] & 0xff)
 			-2*(imagePixels[toIndex(i-1,j  )] & 0xff) +2*(imagePixels[toIndex(i+1,j  )] & 0xff)
 			-1*(imagePixels[toIndex(i-1,j+1)] & 0xff) +1*(imagePixels[toIndex(i+1,j+1)] & 0xff);
@@ -223,7 +224,7 @@ class Dijkstraheap implements Runnable{
 			   + "Gradq(" + gradientx[toIndex(dx,dy)]+ ","+gradienty[toIndex(dx,dy)]+ ")");*/
 
 
-	return 0.43*fd+0.13*fg;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
+	return 0.43*fg+0.13*fd;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
 	
     }
     //updates Costs and Paths for a given point
