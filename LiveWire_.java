@@ -25,7 +25,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     int state;
     ImagePlus lapzero;//image to visualize zero crossing laplacian
     Toolbar oldToolbar;
-    int LiveWireId;//id to hold new tool so that we won't select other tools
+    static int LiveWireId;//id to hold new tool so that we won't select other tools
     
 	int[] selx; //selection x points
 	int[] sely; //selection y points
@@ -72,13 +72,22 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	    width = ip.getWidth();
 	    height = ip.getHeight();
 		
+
+	    oldToolbar = Toolbar.getInstance();
+	    //this will avoid multiple plugins buttons
+	    //thanks to Wayne Rasband for the hint
+	    if(LiveWireId==0){
+		LiveWireId = oldToolbar.addTool("Live Wire-C090T0f15LC00aT5f15w");
+		if(LiveWireId==-1){
+		    IJ.error("Toolbar is full");
+		    return; 
+		}		
+	    }
+	    oldToolbar.setTool(LiveWireId);
+
 		/**
 		 * This part will remove the old toolbar
 		 */
-		oldToolbar = Toolbar.getInstance();
-		LiveWireId = oldToolbar.addTool("Live Wire-C090T0f15LC00aT5f15w");
-	
-		oldToolbar.setTool(LiveWireId);
 		/*
 		Container container = oldToolbar.getParent();
 		Component[] components = container.getComponents();
@@ -129,6 +138,9 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		//Test SOBEL
 		//create laplacian zero crossing function		
 		//lapzero = img.createImagePlus();
+
+		/*
+
 		ImagePlus nova = NewImage.createByteImage("Baggio - Sobel GradientX",ip.getWidth(),ip.getHeight(),1,NewImage.FILL_WHITE);
 		ImageProcessor newImage = nova.getProcessor();
 
@@ -229,6 +241,8 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		}
 		nova3.show();
 		nova3.updateAndDraw();
+		*/ 
+		//Sobel Test ends here
 		
 		//initializing selections
 		selx = new int[width*height];
@@ -239,11 +253,11 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	}
 	
 	void showAbout() {
-	    IJ.showMessage("About Snakes_...",
-	    "This sample plugin filter inverts 8-bit images. Look\n" +
-	    "at the ’Inverter_.java’ source file to see how easy it is\n" +
-	    "in ImageJ to process non-rectangular ROIs, to process\n" +
-	    "all the slices in a stack, and to display an About box."
+	    IJ.showMessage("About LiveWire_...",
+	    "This sample plugin segments 8-bit images and needs \n" +
+	    "Java 1.5. For more information look at the following page\n" +
+	    " http://ivussnakes.sourceforge.net/ for more info"
+
 	    );
 	}
 

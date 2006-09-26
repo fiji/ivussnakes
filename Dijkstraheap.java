@@ -481,7 +481,7 @@ class Dijkstraheap implements Runnable{
 	while(pixelCosts.peek()!=null)
 		pixelCosts.poll();
 	
-	System.out.println("Point set.......");
+	//	System.out.println("Point set.......");
 	/*
 	System.out.println("");
 	for(int j=0;j<height;j++){
