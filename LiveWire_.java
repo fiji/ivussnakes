@@ -2,18 +2,30 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
-import ij.gui.NewImage;
 import ij.gui.PolygonRoi;
 import ij.gui.Roi;
 import ij.gui.Toolbar;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.Point;
 import java.awt.Polygon;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
-import java.util.StringTokenizer;
+import java.util.ArrayList;
+
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JSlider;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListener {
     final int IDLE = 0;
@@ -30,17 +42,18 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	int[] selx; //selection x points
 	int[] sely; //selection y points
 	int selSize;//selection size
+	PolygonRoi pRoi;//selection Polygon
 	int[] tempx; //temporary selection x points
 	int[] tempy; //temporary selection y points
 	int tempSize; //temporary selection size
 	
     
     Dijkstraheap dj;
-    
+    double gw;//magnitude weight
+    double dw;//direction weight
+    ArrayList<Point> anchor;//stores anchor points
 
 	public int setup(String arg, ImagePlus imp) {
-			
-		
 		this.img = imp;
 		if (arg.equals("about")) {
 		    showAbout();
@@ -51,6 +64,20 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 
 	
 	public void run(ImageProcessor ip) {
+		//check IJ version
+		if (IJ.versionLessThan("1.37r")) {
+			IJ.showMessage("This plugin might not work with older versions of ImageJ\n"+
+					"You should update your ImageJ to at least 1.37r\n" +
+					"It also requires Java 1.5\n"
+					);			
+		}
+		//initialize Anchor
+		anchor = new ArrayList<Point>();
+		//create Window for parameters		
+		createWindow();
+		
+		//sets temporary selection size to zero
+		tempSize = 0;
 
 	    //remove old mouse listeners
 	    ImageWindow win = img.getWindow();
@@ -260,6 +287,115 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 
 	    );
 	}
+	
+	void createWindow(){
+
+		final JFrame frame = new JFrame("LiveWire Parameter Configuration");
+		final javax.swing.JButton bUpdate;
+			    	    
+        bUpdate = new javax.swing.JButton();
+        
+        bUpdate.setActionCommand("Update");
+        
+                
+    	frame.setSize( 400, 400 );
+    	frame.setLocation(400, 200);
+    	
+    	//initialize weight variables
+    	gw = 0.43;
+    	dw = 0.13;
+    	//label for the magnitude
+    	final JLabel gLabel = new JLabel( "Magnitude: " + (int) (gw * 100), JLabel.LEFT );
+    	gLabel.setAlignmentX( Component.CENTER_ALIGNMENT);
+    	
+    	//slider for magnitude
+    	final JSlider gSlider = new JSlider( JSlider.HORIZONTAL,
+			       0, (int) (100 * 1.0) ,(int) (100*gw) );
+    	gSlider.setMajorTickSpacing( 10 );
+    	gSlider.setMinorTickSpacing(  5 );
+    	gSlider.setPaintTicks( true );
+    	gSlider.setPaintLabels( true );
+    	gSlider.setBorder( BorderFactory.createEmptyBorder( 0, 0, 10, 0 ) );
+    	
+    	gSlider.addChangeListener( new ChangeListener() {
+    		public void stateChanged( ChangeEvent e ) {
+    			gLabel.setText( "Magnitude: " + gSlider.getValue() );
+    		    gw = ((double)gSlider.getValue())/100;
+    		    //System.out.println("Fg is now " + fg);
+    		}
+    	} 
+    	);
+
+
+    	//label for direction
+    	final JLabel dLabel = new JLabel( "Direction: " + (int) (dw * 100), JLabel.LEFT );
+    	dLabel.setAlignmentX( Component.CENTER_ALIGNMENT );
+    	//    	slider for direction
+    	final JSlider dSlider = new JSlider( JSlider.HORIZONTAL,
+			       0, (int) (100 * 1.0) ,(int) (100*dw) );
+    	dSlider.setMajorTickSpacing( 10 );
+    	dSlider.setMinorTickSpacing(  5 );
+    	dSlider.setPaintTicks( true );
+    	dSlider.setPaintLabels( true );
+    	dSlider.setBorder( BorderFactory.createEmptyBorder( 0, 0, 10, 0 ) );
+    	
+    	dSlider.addChangeListener( new ChangeListener() {
+    		public void stateChanged( ChangeEvent e ) {
+    			dLabel.setText( "Direction: " + dSlider.getValue() );
+    		    dw = ((double)dSlider.getValue())/100;
+    		    //System.out.println("Fd is now " + fd);
+    		}
+    	} 
+    	);
+
+    	
+        bUpdate.setText("Update");
+        bUpdate.addActionListener( new ActionListener() {
+    		public void actionPerformed( ActionEvent e ) {
+    			//System.out.println("Command was" + e.getActionCommand());
+    			dj.setGWeight(gw);
+    			dj.setDWeight(dw);
+    			dj.setPoint(dj.getTx(),dj.getTy());
+    		    //System.out.println("Fg " + gw + " Fd "+ dw);    		    
+    		}
+    	    } );
+        
+        frame.getContentPane().setLayout( new BoxLayout( frame.getContentPane(), BoxLayout.Y_AXIS ) );
+        frame.getContentPane().add(gLabel);
+        frame.getContentPane().add(gSlider);
+        frame.getContentPane().add(dLabel);
+        frame.getContentPane().add(dSlider);
+        frame.getContentPane().add(bUpdate);
+        
+                
+        /*org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(layout.createSequentialGroup()
+                .add(71, 71, 71)
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(jTextField1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(layout.createSequentialGroup()
+                        .add(jButton1)
+                        .add(75, 75, 75)
+                        .add(jButton2)))
+                .addContainerGap(78, Short.MAX_VALUE))
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
+                .addContainerGap(112, Short.MAX_VALUE)
+                .add(jTextField1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .add(87, 87, 87)
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(jButton2)
+                    .add(jButton1))
+                .add(57, 57, 57))
+        );*/        
+        frame.pack();
+        frame.setVisible(true);        
+	}
 
 	public void mouseClicked(MouseEvent e) {
 				
@@ -273,24 +409,52 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		int myx = canvas.offScreenX(e.getX());
 		int myy = canvas.offScreenY(e.getY());
 		
-		if (state==IDLE){
-			dj.setPoint(myx,myy);
+		if(e.getButton()== MouseEvent.BUTTON1){		
+			if(state == IDLE){
+				IJ.runMacro("setOption('DisablePopupMenu', true)");
+				state = WIRE;
+			}
 			
+			anchor.add(new Point(myx,myy));
+			paintPoints();
+			dj.setPoint(myx,myy);
+				
 			for(int i=0;i<tempSize;i++){
 				selx[selSize+i]=tempx[i];
-				sely[selSize+i]=tempy[i];
+				sely[selSize+i]=tempy[i];					
+			}
+			selSize+=tempSize;			
+		}
+		else if(e.getButton()== MouseEvent.BUTTON3){			
+			if(state == WIRE){
+				IJ.runMacro("setOption('DisablePopupMenu', false)");
+				state = IDLE;				
 				
 			}
-			selSize+=tempSize;
-				
-			//IJ.write("Dijkstra Point Set");
-			state = WIRE;
-		}
-		else if(state == WIRE){
-			state = IDLE;
 		}
 		
 	}
+
+	/**
+	 * This method highlights the anchor points drawing a Circle around them
+	 */
+	private void paintPoints() {
+		ImageCanvas ic;
+		ic = img.getCanvas();
+		Graphics g = ic.getGraphics();
+		g.setColor(Roi.getColor());
+		for(int i=0;i<anchor.size();i++){
+			int myx = (int) ((Point)(anchor.get(i))).getX();
+			int myy = (int) ((Point)(anchor.get(i))).getY();
+			
+			g.drawRect(	ic.screenX(myx),
+						ic.screenY(myy),10,10);
+		}
+		
+		//img.draw(0,0,100,100);
+		
+	}
+
 
 	public void mouseReleased(MouseEvent e) {
 		// TODO Auto-generated method stub
@@ -344,8 +508,8 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 			tempy = vy;
 			tempSize = size[0];
 			Polygon p = new Polygon(selx,sely,size[0]+selSize);				
-			PolygonRoi a = new PolygonRoi(p,Roi.FREELINE);		
-			img.setRoi(a);
+			pRoi = new PolygonRoi(p,Roi.FREELINE);		
+			img.setRoi(pRoi);
 			if(size[0]==0)
 				IJ.showStatus("Please, wait. Still creating the LiveWire");
 				

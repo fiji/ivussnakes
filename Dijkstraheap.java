@@ -28,10 +28,13 @@ class Dijkstraheap implements Runnable{
     int height;
     int sx,sy; //seed x and seed y, weight zero for this point
 
-    int tx,ty;//thread x and y passed as parameters
+    private int tx,ty;//thread x and y passed as parameters
 
     Thread myThread;
     boolean myThreadRuns;//flag for thread state
+    
+    private double gw;//Gradient Magnitude Weight - set by setGWeight
+    private double dw;//Gradient Direction Weight - set by setDWeight
      
 
     static int INF = 0x7FFFFFFF; //maximum integer
@@ -131,6 +134,12 @@ class Dijkstraheap implements Runnable{
 
     //initializes Dijkstra with the image
     public Dijkstraheap(byte[] image,int x, int y){
+    	
+    	//initializes weights for edge cost
+    	//these are default values
+    	gw = 0.43;
+    	dw = 0.13;
+    	
 	//initializes all other matrices
 	imagePixels = new byte[x*y];
 	//	imageCosts  = new int [x*y];
@@ -224,9 +233,17 @@ class Dijkstraheap implements Runnable{
 			   + "Gradq(" + gradientx[toIndex(dx,dy)]+ ","+gradienty[toIndex(dx,dy)]+ ")");*/
 
 
-	return 0.43*fg+0.13*fd;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
+	return gw*fg+dw*fd;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
 	
     }
+    //sets weights for fg and fd
+    public void setGWeight(double pgw){
+    	gw = pgw;
+    }
+    public void setDWeight(double pdw){
+    	dw = pdw;
+    }
+    
     //updates Costs and Paths for a given point
     //actuates over 8 directions N, NE, E, SE, S, SW, W, NW
     private void updateCosts(int x,int y,double mycost){
@@ -500,6 +517,14 @@ class Dijkstraheap implements Runnable{
 	    }*/
 	
     }
+
+	public int getTx() {
+		return tx;
+	}
+
+	public int getTy() {
+		return ty;
+	}
 
 
 		    	
