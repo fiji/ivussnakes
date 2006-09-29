@@ -1,15 +1,14 @@
 import ij.IJ;
 import ij.ImagePlus;
+import ij.gui.ERoi;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
-import ij.gui.PolygonRoi;
 import ij.gui.Roi;
 import ij.gui.Toolbar;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
 import java.awt.Component;
-import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.event.ActionEvent;
@@ -28,8 +27,11 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListener {
-    final int IDLE = 0;
-    final int WIRE = 1;
+    final int IDLE   = 0;
+    final int WIRE   = 1;
+    final int HANDLE = 2;
+    
+    int myHandle;
     
     ImagePlus img;
     ImageCanvas canvas;
@@ -42,16 +44,21 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	int[] selx; //selection x points
 	int[] sely; //selection y points
 	int selSize;//selection size
-	PolygonRoi pRoi;//selection Polygon
+	ERoi pRoi;//selection Polygon
 	int[] tempx; //temporary selection x points
 	int[] tempy; //temporary selection y points
 	int tempSize; //temporary selection size
+	
+	int dijX;// temporary value for Dijkstra, to check if path is done
+	int dijY;// temporary value for Dijkstra, to check if path is done
 	
     
     Dijkstraheap dj;
     double gw;//magnitude weight
     double dw;//direction weight
     ArrayList<Point> anchor;//stores anchor points
+    ArrayList<Integer> selIndex;//stores selection index to create new anchors in 
+                                //between points and move them
 
 	public int setup(String arg, ImagePlus imp) {
 		this.img = imp;
@@ -68,16 +75,27 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		if (IJ.versionLessThan("1.37r")) {
 			IJ.showMessage("This plugin might not work with older versions of ImageJ\n"+
 					"You should update your ImageJ to at least 1.37r\n" +
-					"It also requires Java 1.5\n"
+					"It also requires Java 1.5 \n" +
+					"Just visit http://rsb.info.nih.gov/ij/upgrade/ and " +
+					"download the ij.jar file"
 					);			
 		}
+
 		//initialize Anchor
 		anchor = new ArrayList<Point>();
+		selIndex = new ArrayList<Integer>();
 		//create Window for parameters		
 		createWindow();
 		
+		dijX = -1;
+		dijY = -1;
+		
 		//sets temporary selection size to zero
 		tempSize = 0;
+		
+		//sets handle selected
+		myHandle=-1;
+		
 
 	    //remove old mouse listeners
 	    ImageWindow win = img.getWindow();
@@ -411,55 +429,281 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		
 		if(e.getButton()== MouseEvent.BUTTON1){		
 			if(state == IDLE){
-				IJ.runMacro("setOption('DisablePopupMenu', true)");
-				state = WIRE;
+				myHandle = -1;
+				if(pRoi!=null)
+					myHandle = pRoi.isHandle(myx,myy);
+				if(myHandle!=-1){
+					state = HANDLE;
+					return;
+				}
+				else{
+					//we are going back to segment
+					IJ.runMacro("setOption('DisablePopupMenu', true)");
+					state = WIRE;
+					if(selSize>0){
+						//retrieve last point to Dijkstra
+						dj.setPoint(selx[selSize-1],sely[selSize-1]);
+						return;
+					}
+				}
 			}
 			
-			anchor.add(new Point(myx,myy));
-			paintPoints();
+			
+			
+			
+			//be careful, in first time we should not subtract 1
+			if(selSize+tempSize==0){
+				selIndex.add(selSize+tempSize);
+			}
+			else{
+				selIndex.add(selSize+tempSize-1);
+				if(!((dijX==myx)&&(dijY==myy))){
+					return;
+				}
+			}
+			anchor.add(new Point(myx,myy));			
+			
+			//updates handle squares
+			Polygon p = new Polygon(selx,sely,selSize+tempSize);
+			int[] ax = new int[anchor.size()];
+			int[] ay = new int[anchor.size()];
+			
+			for(int i=0;i<anchor.size();i++){
+				ax[i] = (int) ((Point)(anchor.get(i))).getX();
+				ay[i] = (int) ((Point)(anchor.get(i))).getY();								
+			}
+			
+			
+			Polygon myAnchor = new Polygon(ax,ay,anchor.size());
+			pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+			img.setRoi(pRoi);
+			
+			
+			
 			dj.setPoint(myx,myy);
 				
 			for(int i=0;i<tempSize;i++){
 				selx[selSize+i]=tempx[i];
 				sely[selSize+i]=tempy[i];					
 			}
-			selSize+=tempSize;			
+			selSize+=tempSize;
+			tempSize=0;
 		}
 		else if(e.getButton()== MouseEvent.BUTTON3){			
 			if(state == WIRE){
+				
+				if(!((dijX==myx)&&(dijY==myy))){
+					return;
+				}
+				
+				
+				
 				IJ.runMacro("setOption('DisablePopupMenu', false)");
-				state = IDLE;				
+				state = IDLE;
+				
+				
+				//same thing as in left click
+				anchor.add(new Point(myx,myy));
+				
+				
+				selIndex.add(selSize+tempSize-1);				
+				
+				//updates handle squares
+				Polygon p = new Polygon(selx,sely,selSize+tempSize);
+				int[] ax = new int[anchor.size()];
+				int[] ay = new int[anchor.size()];
+				
+				for(int i=0;i<anchor.size();i++){
+					ax[i] = (int) ((Point)(anchor.get(i))).getX();
+					ay[i] = (int) ((Point)(anchor.get(i))).getY();								
+				}
+				
+				
+				Polygon myAnchor = new Polygon(ax,ay,anchor.size());
+				pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+				img.setRoi(pRoi);
+				
+				
+				
+				dj.setPoint(myx,myy);
+					
+				for(int i=0;i<tempSize;i++){					
+					selx[selSize+i]=tempx[i];
+					sely[selSize+i]=tempy[i];					
+				}
+				selSize+=tempSize;	
+				tempSize=0;
 				
 			}
 		}
 		
 	}
 
-	/**
-	 * This method highlights the anchor points drawing a Circle around them
-	 */
-	private void paintPoints() {
-		ImageCanvas ic;
-		ic = img.getCanvas();
-		Graphics g = ic.getGraphics();
-		g.setColor(Roi.getColor());
-		for(int i=0;i<anchor.size();i++){
-			int myx = (int) ((Point)(anchor.get(i))).getX();
-			int myy = (int) ((Point)(anchor.get(i))).getY();
+	
+
+
+	public void mouseReleased(MouseEvent e)  {
+		if(state == HANDLE){
+
+			//update selection
+			//copy selection from handle 0 to this handle minus 1
 			
-			g.drawRect(	ic.screenX(myx),
-						ic.screenY(myy),10,10);
-		}
-		
-		//img.draw(0,0,100,100);
-		
-	}
+			int myx = canvas.offScreenX(e.getX());
+			int myy = canvas.offScreenY(e.getY());
+							
+				int[] tselx = new int[height*width];//temporary x selection
+				int[] tsely = new int[height*width];//temporary y selection
+				int count = 0;
+				
+				//for handle one, put at least one point, else nothing will appear from the 
+				//initial handle to this
+/*				if(myHandle==1){
+					tselx[count]=selx[0];
+					tsely[count]=sely[0];
+					count++;					
+				}*/
+				
+				for(int i=0;i<myHandle-1;i++){					
+					for(int j=selIndex.get(i);j< selIndex.get(i+1);j++){							
+						tselx[count]=selx[j];
+						tsely[count]=sely[j];
+						count++;
+					}											
+				}
+				//vectors needed to hold dijkstra's result
+				int[] ts = new int[1];
+				int[] tx = new int[height*width];
+				int[] ty = new int[height*width];
+				ts[0]=0;
+				
+				
+				//dealing with livewire from handle minus one to this
+				if(myHandle>0){
+					int previousX = selx[selIndex.get(myHandle-1)];
+					int previousY = sely[selIndex.get(myHandle-1)];
+					
+					dj.setPoint(previousX,previousY);
+													
+				
+									
+					//while the path isn't returned
+					while(ts[0]==0){
+						try {
+							Thread.sleep(100);						
+						} catch (InterruptedException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						}
+						dj.returnPath(myx,myy,tx,ty,ts);				
+					}
+					
+					for(int i=0;i<ts[0];i++){
+						tselx[count]=tx[i];
+						tsely[count]=ty[i];
+						count++;
+					}
+				}
+					
+				selIndex.set(myHandle,count);
+				
+				//dealing with livewire from this handle to next
+				if(myHandle<selIndex.size()-1){										
+					int nextX = selx[selIndex.get(myHandle+1)];
+					int nextY = sely[selIndex.get(myHandle+1)];					
+					
+					dj.setPoint(myx,myy);
+																	
+					ts[0]=0;
+									
+					//while the path isn't returned
+					while(ts[0]==0){
+						try {
+							Thread.sleep(100);						
+						} catch (InterruptedException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						}
+						dj.returnPath(nextX,nextY,tx,ty,ts);				
+					}
+					
+					for(int i=0;i<ts[0];i++){
+						tselx[count]=tx[i];
+						tsely[count]=ty[i];
+						count++;
+					}
+				}
+				
 
+				
+				
+				for(int i=myHandle+1;i<selIndex.size()-1;i++){
+					int initialCount = count;					
+					for(int j=selIndex.get(i);j< selIndex.get(i+1);j++){
+						tselx[count]=selx[j];
+						tsely[count]=sely[j];
+						count++;
+					}
+					selIndex.set(i,initialCount);					
+				}
+				
+				
+				
+//				for last handle, put at least one point, else nothing will appear from the 
+				//initial handle to this
+				/*if(myHandle==selIndex.size()-2){
+					tselx[count]=selx[selSize-1];
+					tsely[count]=sely[selSize-1];
+					count++;					
+				}*/
 
-	public void mouseReleased(MouseEvent e) {
-		// TODO Auto-generated method stub
-
-		
+				//				updates last selIndex
+				if(myHandle < selIndex.size()-1){
+					tselx[count]=selx[selSize-1];
+					tsely[count]=sely[selSize-1];
+				}
+				else if( myHandle== selIndex.size()-1){
+					//if we are dealing with the last point
+					tselx[count]=myx;
+					tsely[count]=myy;				
+				}
+				selIndex.set(selIndex.size()-1,count);												
+				
+				count++;
+				//copies to original selection				
+				for(int i=0;i<count;i++){
+					selx[i]=tselx[i];
+					sely[i]=tsely[i];
+				}
+				selSize = count;
+				
+				Polygon p = new Polygon(tselx,tsely,count);
+				int[] ax = new int[anchor.size()];
+				int[] ay = new int[anchor.size()];
+				
+				//replace actual point
+				anchor.set(myHandle,new Point(myx,myy));
+				
+				for(int i=0;i<anchor.size();i++){
+					ax[i] = (int) ((Point)(anchor.get(i))).getX();
+					ay[i] = (int) ((Point)(anchor.get(i))).getY();								
+				}
+				
+				
+				Polygon myAnchor = new Polygon(ax,ay,anchor.size());
+				pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+				img.setRoi(pRoi);
+				
+			state = IDLE;
+			myHandle = -1;
+			/*
+			System.out.println("Debug selSize = " + selSize);
+			for(int i=0;i<selSize;i++){
+				System.out.println("( "+ selx[i] + " , " + sely[i] + " )");
+			}
+			for(int i=0;i<selIndex.size();i++){
+				System.out.println("selIndex "+i+ ": "+selIndex.get(i));
+			}*/
+		}		
 	}
 
 	public void mouseEntered(MouseEvent e) {
@@ -474,7 +718,85 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 
 
 	public void mouseDragged(MouseEvent e) {
-		// TODO Auto-generated method stub
+		int myx = canvas.offScreenX(e.getX());
+		int myy = canvas.offScreenY(e.getY());		
+		
+		if(state==HANDLE){
+			//make new selection, but straight line with next and previous points
+			//for a while, until the user releases the button
+						
+			if((myHandle>=0)){
+				
+				int[] tselx = new int[height*width];//temporary x selection
+				int[] tsely = new int[height*width];//temporary y selection
+				int count = 0;
+				
+				//for handle one, put at least one point, else nothing will appear from the 
+				//initial handle to this
+				if(myHandle==1){
+					tselx[count]=selx[0];
+					tsely[count]=sely[0];
+					count++;					
+				}
+				
+				for(int i=0;i<myHandle-1;i++){
+					
+					for(int j=selIndex.get(i);j< selIndex.get(i+1);j++){							
+						tselx[count]=selx[j];
+						tsely[count]=sely[j];
+						count++;
+					}											
+				}
+				tselx[count]=myx;
+				tsely[count]=myy;
+				count++;
+				
+				for(int i=myHandle+1;i<selIndex.size()-1;i++){					
+					for(int j=selIndex.get(i);j< selIndex.get(i+1);j++){
+						
+						tselx[count]=selx[j];
+						tsely[count]=sely[j];
+						count++;
+					}
+				}
+//				for last handle, put at least one point, else nothing will appear from the 
+				//initial handle to this
+				if(myHandle==selIndex.size()-2){
+					tselx[count]=selx[selSize-1];
+					tsely[count]=sely[selSize-1];
+					count++;					
+				}
+				
+				
+				//copies to original selection
+				/*
+				for(int i=0;i<count;i++){
+					selx[i]=tselx[i];
+					sely[i]=tsely[i];
+				}
+				selSize = count;*/
+				
+				Polygon p = new Polygon(tselx,tsely,count);
+				int[] ax = new int[anchor.size()];
+				int[] ay = new int[anchor.size()];
+				
+				//replace actual point
+				anchor.set(myHandle,new Point(myx,myy));
+				
+				for(int i=0;i<anchor.size();i++){
+					ax[i] = (int) ((Point)(anchor.get(i))).getX();
+					ay[i] = (int) ((Point)(anchor.get(i))).getY();								
+				}
+				
+				
+				Polygon myAnchor = new Polygon(ax,ay,anchor.size());
+				pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+				img.setRoi(pRoi);
+				
+			
+			}
+						
+		}
 		
 	}
 
@@ -482,7 +804,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	public void mouseMoved(MouseEvent e) {	
 		//if other tool is selected, we should return
 		if( Toolbar.getToolId() != LiveWireId )
-			return;
+			return;		
 
 		//if zoom mode is working, we should convert x and y coordinates
 		int myx = canvas.offScreenX(e.getX());
@@ -500,6 +822,12 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 			/*			for(int i=0;i< size[0];i++){
 				IJ.write(i+ ": X " + vx[i]+" Y "+ vy[i]);
 				}*/
+			//if size>0 we'll update dijX and dijY values, 
+			//so that we'll make sure they have been accepted
+			if(size[0]>0){
+				dijX = myx;
+				dijY = myy;
+			}
 			for(int i=0;i<size[0];i++){
 				selx[i+selSize]= vx[i];
 				sely[i+selSize]= vy[i];
@@ -507,15 +835,25 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 			tempx = vx;
 			tempy = vy;
 			tempSize = size[0];
-			Polygon p = new Polygon(selx,sely,size[0]+selSize);				
-			pRoi = new PolygonRoi(p,Roi.FREELINE);		
+			Polygon p = new Polygon(selx,sely,size[0]+selSize);
+			int[] ax = new int[anchor.size()];
+			int[] ay = new int[anchor.size()];
+			
+			for(int i=0;i<anchor.size();i++){
+				ax[i] = (int) ((Point)(anchor.get(i))).getX();
+				ay[i] = (int) ((Point)(anchor.get(i))).getY();								
+			}
+			
+			
+			Polygon myAnchor = new Polygon(ax,ay,anchor.size());
+			pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
 			img.setRoi(pRoi);
 			if(size[0]==0)
 				IJ.showStatus("Please, wait. Still creating the LiveWire");
-				
-		}
-		
-		
-	}
+			
+			
 
+				
+		}		
+	}
 }
