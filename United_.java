@@ -9,13 +9,16 @@ import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
 import java.awt.Component;
+import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Polygon;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
 import javax.swing.BorderFactory;
@@ -26,7 +29,7 @@ import javax.swing.JSlider;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListener {
+public class United_ implements PlugInFilter, MouseListener, MouseMotionListener {
     final int IDLE   = 0;
     final int WIRE   = 1;
     final int HANDLE = 2;
@@ -301,7 +304,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	}
 	
 	void showAbout() {
-	    IJ.showMessage("About LiveWire_...",
+	    IJ.showMessage("About United_...",
 	    "This sample plugin segments 8-bit images and needs \n" +
 	    "Java 1.5. For more information look at the following page\n" +
 	    " http://ivussnakes.sourceforge.net/ for more info"
@@ -579,9 +582,42 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 				}
 				
 				
+				
+				
+				//KWTSnakes
+				//create points
+				ArrayList snakePoints = new ArrayList();				
+				for(int i=0;i< p.npoints;i++){
+					snakePoints.add(new SnakePoint(p.xpoints[i],p.ypoints[i]));
+				}
+				
+				//create image
+		        BufferedImage   image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);		        		        		                        
+		        Graphics g = image.createGraphics();
+		        g.drawImage(img.getImage(), 0, 0, null);
+		        g.dispose();            
+		        
+		        
+									
+				KWTSnake snake = new KWTSnake(snakePoints, image,image,true);
+				for(int i=0;i<100;i++)
+					snake.deform();
+				Rectangle rect = new Rectangle(width,height);
+				
+//				snake.draw( img.getWindow().getGraphics(),1,rect);				
+				//img.getCanvas().getGraphics().clearRect(0,0,50,50);
+				
+				Polygon pSnake = new Polygon();
+				for(int i=0;i<snake.points.size();i++){
+					SnakePoint sp1 = (SnakePoint) snake.points.get(i);
+					pSnake.addPoint((int) sp1.getPos().getX(),(int) sp1.getPos().getY());
+				}								
+
+				//handles roi
 				Polygon myAnchor = new Polygon(ax,ay,anchor.size());
-				pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+				pRoi = new ERoi(pSnake,Roi.FREELINE, myAnchor);		
 				img.setRoi(pRoi);
+				
 				
 				
 				

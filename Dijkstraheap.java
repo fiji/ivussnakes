@@ -35,6 +35,10 @@ class Dijkstraheap implements Runnable{
     
     private double gw;//Gradient Magnitude Weight - set by setGWeight
     private double dw;//Gradient Direction Weight - set by setDWeight
+    private double ew;//Exponential        Weight - set by setEWeight
+    private double pw;//Exponential Potence Weight - set by setPWeight
+    
+    double[][] pCosts;//for debugin reasons
      
 
     static int INF = 0x7FFFFFFF; //maximum integer
@@ -103,6 +107,9 @@ class Dijkstraheap implements Runnable{
 	    if(gradientr[i]<grmin) grmin=gradientr[i];
 	    if(gradientr[i]>grmax) grmax=gradientr[i];
 	}
+	//TAKE ME OUT!!!
+	
+	//	grmin += 600;
 
 
     }
@@ -134,11 +141,15 @@ class Dijkstraheap implements Runnable{
 
     //initializes Dijkstra with the image
     public Dijkstraheap(byte[] image,int x, int y){
+    	 
+    	
     	
     	//initializes weights for edge cost
     	//these are default values
     	gw = 0.43;
     	dw = 0.13;
+    	ew = 0.43;
+    	pw = 30;
     	
 	//initializes all other matrices
 	imagePixels = new byte[x*y];
@@ -148,6 +159,15 @@ class Dijkstraheap implements Runnable{
 	visited     = new boolean[x*y];
 	width  = x;
 	height = y;
+	
+	
+	//for debug reasons
+	//used to store
+	pCosts = new double[x][y];
+	
+	
+	
+	
 	//copy image matrice
 	for(int j=0;j<y;j++){
 	    for(int i=0;i<x;i++){
@@ -171,9 +191,16 @@ class Dijkstraheap implements Runnable{
 	//as is stated in United Snakes formule 36
 	
 	double fg = (1.0/Math.sqrt(2)*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy))* 
-	    (1 - ((gradientr[toIndex(dx,dy)]-grmin)/(grmax-grmin))));
+		(1 - ((gradientr[toIndex(dx,dy)]-grmin)/(grmax-grmin))));
+
 	if(grmin==grmax) 
 	    fg= (1.0/Math.sqrt(2)*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy)));
+
+
+	//this parameter is an attempt to find edges in IVUS images	
+	double x = (gradientr[toIndex(dx,dy)]-grmin)/(grmax-grmin);
+	double fe = Math.exp(-pw*x)*fg;
+
 
 	//	System.out.println("Fg " + fg +" gradientr " + gradientr[toIndex(dx,dy)] + " grmin " + grmin + " grmax " + grmax);
 	//fd id the Gradient Direction
@@ -232,8 +259,8 @@ class Dijkstraheap implements Runnable{
 			   + "Gradp(" + gradientx[toIndex(sx,sy)]+ ","+gradienty[toIndex(sx,sy)]+ ") " 
 			   + "Gradq(" + gradientx[toIndex(dx,dy)]+ ","+gradienty[toIndex(dx,dy)]+ ")");*/
 
-
-	return gw*fg+dw*fd;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
+	//return Math.abs(imagePixels[toIndex(dx,dy)]-imagePixels[toIndex(sx,sy)]);
+	return ew*fe+gw*fg+dw*fd;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
 	
     }
     //sets weights for fg and fd
@@ -242,6 +269,12 @@ class Dijkstraheap implements Runnable{
     }
     public void setDWeight(double pdw){
     	dw = pdw;
+    }
+    public void setEWeight(double pew){
+    	ew = pew;
+    }
+    public void setPWeight(double ppw){
+    	pw = ppw;
     }
     
     //updates Costs and Paths for a given point
@@ -308,6 +341,8 @@ class Dijkstraheap implements Runnable{
 
     public void returnPath(int x, int y,int[] vx,int[] vy,int[] mylength){
 	//retorna o path dada a posição do mouse
+    	System.out.println(pCosts[x][y] + " my cost " + gradientr[toIndex(x,y)]+ " grmin " + grmin + " grmax " + grmax);
+
     	int[] tempx = new int[width*height];
 		int[] tempy = new int[width*height];
     	
@@ -477,11 +512,12 @@ class Dijkstraheap implements Runnable{
 	    nextIndex = ((PixelNode)pixelCosts.peek()).getIndex();
 	    nextX = nextIndex%width;
 	    nextY = nextIndex/width;
+	    
 	    whereFrom[nextIndex] =((PixelNode)pixelCosts.peek()).getWhereFrom();
 
 	    
-	    /*	    System.out.println("Head (" + nextX + ","+nextY +") Value " + ((PixelNode) pixelCosts.peek()).getDistance() + " From " + ((PixelNode) pixelCosts.peek()).getWhereFrom());*/
-
+	    // System.out.println("Head (" + nextX + ","+nextY +") Value " + ((PixelNode) pixelCosts.peek()).getDistance() + " From " + ((PixelNode) pixelCosts.peek()).getWhereFrom());
+	    pCosts[nextX][nextY]= ((PixelNode) pixelCosts.peek()).getDistance();
 
 		
 	    updateCosts(nextX, nextY, ((PixelNode) pixelCosts.peek()).getDistance());
