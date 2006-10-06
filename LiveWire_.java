@@ -52,6 +52,9 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	int dijX;// temporary value for Dijkstra, to check if path is done
 	int dijY;// temporary value for Dijkstra, to check if path is done
 	
+	//Window related
+	JFrame frame;
+	
     
     Dijkstraheap dj;
     double gw;//magnitude weight
@@ -311,7 +314,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	
 	void createWindow(){
 
-		final JFrame frame = new JFrame("LiveWire Parameter Configuration");
+		frame = new JFrame("LiveWire Parameter Configuration");
 		final javax.swing.JButton bUpdate;
 			    	    
         bUpdate = new javax.swing.JButton();
@@ -325,7 +328,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     	//initialize weight variables
     	gw = 0.43;
     	dw = 0.13;
-    	ew = 0.43;
+    	ew = 0.0;
     	pw = 30;
     	
     	//label for exponential weight
@@ -335,7 +338,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     	//slider for exponential weight
     	final JSlider eSlider = new JSlider( JSlider.HORIZONTAL,
 			       0, (int) (100 * 1.0) ,(int) (100*ew) );
-    	eSlider.setMajorTickSpacing( 10 );
+    	eSlider.setMajorTickSpacing( 20 );
     	eSlider.setMinorTickSpacing(  5 );
     	eSlider.setPaintTicks( true );
     	eSlider.setPaintLabels( true );
@@ -351,13 +354,13 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     	);
     	
     	//    	label for exponencial potence weigth
-    	final JLabel pLabel = new JLabel( "Potence: " + (int) (pw), JLabel.LEFT );
+    	final JLabel pLabel = new JLabel( "Power: " + (int) (pw), JLabel.LEFT );
     	pLabel.setAlignmentX( Component.CENTER_ALIGNMENT);
     	
     	//slider for magnitude
     	final JSlider pSlider = new JSlider( JSlider.HORIZONTAL,
 			       0, (int) (120 * 1.0) ,(int) (pw) );
-    	pSlider.setMajorTickSpacing( 10 );
+    	pSlider.setMajorTickSpacing( 20 );
     	pSlider.setMinorTickSpacing(  5 );
     	pSlider.setPaintTicks( true );
     	pSlider.setPaintLabels( true );
@@ -365,7 +368,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     	
     	pSlider.addChangeListener( new ChangeListener() {
     		public void stateChanged( ChangeEvent e ) {
-    			pLabel.setText( "Potence: " + pSlider.getValue() );
+    			pLabel.setText( "Power: " + pSlider.getValue() );
     		    pw = (double)pSlider.getValue();
     		    //System.out.println("Fg is now " + fg);
     		}
@@ -382,7 +385,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     	//slider for magnitude
     	final JSlider gSlider = new JSlider( JSlider.HORIZONTAL,
 			       0, (int) (100 * 1.0) ,(int) (100*gw) );
-    	gSlider.setMajorTickSpacing( 10 );
+    	gSlider.setMajorTickSpacing( 20 );
     	gSlider.setMinorTickSpacing(  5 );
     	gSlider.setPaintTicks( true );
     	gSlider.setPaintLabels( true );
@@ -404,7 +407,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     	//    	slider for direction
     	final JSlider dSlider = new JSlider( JSlider.HORIZONTAL,
 			       0, (int) (100 * 1.0) ,(int) (100*dw) );
-    	dSlider.setMajorTickSpacing( 10 );
+    	dSlider.setMajorTickSpacing( 20 );
     	dSlider.setMinorTickSpacing(  5 );
     	dSlider.setPaintTicks( true );
     	dSlider.setPaintLabels( true );
@@ -424,12 +427,14 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
         bUpdate.addActionListener( new ActionListener() {
     		public void actionPerformed( ActionEvent e ) {
     			//System.out.println("Command was" + e.getActionCommand());
-    			dj.setPWeight(pw);
-    			dj.setEWeight(ew);
-    			dj.setGWeight(gw);
-    			dj.setDWeight(dw);    			
-    			dj.setPoint(dj.getTx(),dj.getTy());
-    		    //System.out.println("Fg " + gw + " Fd "+ dw);    		    
+    			if(e.getActionCommand().equals("Update")){
+	    			dj.setPWeight(pw);
+	    			dj.setEWeight(ew);
+	    			dj.setGWeight(gw);
+	    			dj.setDWeight(dw);    			
+	    			dj.setPoint(dj.getTx(),dj.getTy());
+    		    //System.out.println("Fg " + gw + " Fd "+ dw);
+    			}
     		}
     	    } );
         
