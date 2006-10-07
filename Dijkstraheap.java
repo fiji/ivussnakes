@@ -148,7 +148,7 @@ class Dijkstraheap implements Runnable{
     	//these are default values
     	gw = 0.43;
     	dw = 0.13;
-    	ew = 0.43;
+    	ew = 0.0;
     	pw = 30;
     	
 	//initializes all other matrices
@@ -170,8 +170,9 @@ class Dijkstraheap implements Runnable{
 	
 	//copy image matrice
 	for(int j=0;j<y;j++){
-	    for(int i=0;i<x;i++){
-		imagePixels[j*x+i] = image[j*x+i];		
+	    for(int i=0;i<x;i++){	    	
+		imagePixels[j*x+i] = 
+			image[j*x+i];		
 		//imageCosts [j*x+i] = INF;
 		visited    [j*x+i] = false;
 		//		System.out.print((imagePixels[j*x+i]&0xff)+ " ");
@@ -340,8 +341,8 @@ class Dijkstraheap implements Runnable{
     }
 
     public void returnPath(int x, int y,int[] vx,int[] vy,int[] mylength){
-	//retorna o path dada a posição do mouse
-    	System.out.println(pCosts[x][y] + " my cost " + gradientr[toIndex(x,y)]+ " grmin " + grmin + " grmax " + grmax);
+	//returns the path given mouse position
+    	//System.out.println(pCosts[x][y] + " my cost " + gradientr[toIndex(x,y)]+ " grmin " + grmin + " grmax " + grmax);
 
     	int[] tempx = new int[width*height];
 		int[] tempy = new int[width*height];

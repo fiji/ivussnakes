@@ -1,10 +1,13 @@
 import ij.IJ;
 import ij.ImagePlus;
+import ij.Macro;
+import ij.WindowManager;
 import ij.gui.ERoi;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.Roi;
 import ij.gui.Toolbar;
+import ij.plugin.filter.Duplicater;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
@@ -17,6 +20,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.util.ArrayList;
+import java.util.StringTokenizer;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -41,6 +45,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     Toolbar oldToolbar;
     static int LiveWireId;//id to hold new tool so that we won't select other tools
     
+    byte[] pixels;//image pixels
 	int[] selx; //selection x points
 	int[] sely; //selection y points
 	int selSize;//selection size
@@ -66,17 +71,18 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     ArrayList<Integer> selIndex;//stores selection index to create new anchors in 
                                 //between points and move them
 
-	public int setup(String arg, ImagePlus imp) {
+	public int setup(String arg, ImagePlus imp) {		
 		this.img = imp;
 		if (arg.equals("about")) {
 		    showAbout();
 		    return DONE;
-		}
-		return DOES_8G+DOES_STACKS+SUPPORTS_MASKING;
+		}					
+		return DOES_ALL;//+DOES_STACKS+SUPPORTS_MASKING;//DOES_8G+DOES_STACKS+SUPPORTS_MASKING;
 	}
 
 	
 	public void run(ImageProcessor ip) {
+		
 		//check IJ version
 		if (IJ.versionLessThan("1.37r")) {
 			IJ.showMessage("This plugin might not work with older versions of ImageJ\n"+
@@ -86,22 +92,128 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 					"download the ij.jar file"
 					);			
 		}
+		
+		initialize(ip);						
 
-		//initialize Anchor
-		anchor = new ArrayList<Point>();
-		selIndex = new ArrayList<Integer>();
+		
+		//		test Macro
+		// make sure we grab the parameters before any other macro is run, 
+		// like the one that converts to grayscale
+		String arg = Macro.getOptions();	    				
+						
+		if(arg!=null){
+			//we are being run from a Macro
+		     StringTokenizer st = new StringTokenizer(arg,"= ",false);
+		     int x0=0,x1=0,y0=0,y1=0,mag=0,dir=0,exp=0,pow=0 ;
+		     
+		     while (st.hasMoreTokens()) {
+		    	 String par = st.nextToken();		         
+		         //parse the values
+		         if(par.charAt(0)=='x'){
+		        	 //reading a x value
+		        	 String val = st.nextToken();
+		        	 if(par.charAt(1)=='0'){ //reading x0
+		        		 x0 = Integer.parseInt(val);
+		        	 }
+		        	 else if(par.charAt(1)=='1'){//reading x1
+		        		 x1 = Integer.parseInt(val);		        		 
+		        	 }
+		         }
+		         else if(par.charAt(0)=='y'){
+		        	 //reading a y value
+		        	 String val = st.nextToken();
+		        	 if(par.charAt(1)=='0'){ //reading y0
+		        		 y0 = Integer.parseInt(val);
+		        	 }
+		        	 else if(par.charAt(1)=='1'){//reading y1
+		        		 y1 = Integer.parseInt(val);		        		 
+		        	 }
+		         }
+		         else if(par.charAt(0)=='m'){ 
+		        	 // reading magnitude
+		        	 String val = st.nextToken();		        	
+		        		 mag = Integer.parseInt(val);		        	 		        	
+		         }
+		         else if(par.charAt(0)=='d'){ 
+		        	 // reading magnitude
+		        	 String val = st.nextToken();		        	
+		        		 dir = Integer.parseInt(val);		        	 		        	
+		         }
+		         else if(par.charAt(0)=='e'){ 
+		        	 // reading magnitude
+		        	 String val = st.nextToken();		        	
+		        		 exp = Integer.parseInt(val);		        	 		        	
+		         }
+		         else if(par.charAt(0)=='p'){ 
+		        	 // reading magnitude
+		        	 String val = st.nextToken();		        	
+		        		 pow = Integer.parseInt(val);		        	 		        	
+		         }
+
+		     }			
+		     if(
+		     (x0<0)||(x0>=ip.getWidth()) ||
+		     (x1<0)||(x1>=ip.getWidth()) ||
+		     (y0<0)||(y0>=ip.getHeight()) ||
+		     (y1<0)||(y1>=ip.getHeight()) 
+		     ){
+		    	 IJ.error("Start or end points are out of the image");
+		    	 return;
+		     }
+		     		     
+		     dj = new Dijkstraheap (pixels,ip.getWidth(),ip.getHeight());		     
+		     dj.setGWeight(mag);
+		     dj.setDWeight(dir);
+		     dj.setEWeight(exp);
+		     dj.setPWeight(pow);
+		     dj.setPoint(x0,y0);
+		     
+		     //create selection
+		     	int[] vx = new int[width*height];
+				int[] vy = new int[width*height];
+				int[] size = new int[1];
+				
+
+				dj.returnPath(x1,y1,vx,vy,size);			
+				while(size[0]==0){
+					IJ.showStatus("Please, wait. Still creating the LiveWire");
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					dj.returnPath(x1,y1,vx,vy,size);
+				}
+								
+				for(int i=0;i<size[0];i++){
+					selx[i+selSize]= vx[i];
+					sely[i+selSize]= vy[i];
+				}
+				tempx = vx;
+				tempy = vy;
+				tempSize = size[0];
+				Polygon p = new Polygon(selx,sely,size[0]+selSize);
+				int[] ax = new int[anchor.size()];
+				int[] ay = new int[anchor.size()];
+				
+				for(int i=0;i<anchor.size();i++){
+					ax[i] = (int) ((Point)(anchor.get(i))).getX();
+					ay[i] = (int) ((Point)(anchor.get(i))).getY();								
+				}
+				
+				
+				Polygon myAnchor = new Polygon(ax,ay,anchor.size());
+				pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+				img.setRoi(pRoi);
+		     
+		     //System.out.println("Values x0 " + x0 + " x1 "+ x1 + " y0 " + y0 + " y1 " + y1 + " mag " + mag +
+		     //	 " dir " + dir + " pow " + pow + " exp " + exp);
+			return;
+		}
+
 		//create Window for parameters		
-		createWindow();
-		
-		dijX = -1;
-		dijY = -1;
-		
-		//sets temporary selection size to zero
-		tempSize = 0;
-		
-		//sets handle selected
-		myHandle=-1;
-		
+		createWindow();		
 
 	    //remove old mouse listeners
 	    ImageWindow win = img.getWindow();
@@ -118,10 +230,9 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	    canvas.addMouseListener(this);
 	    canvas.addMouseMotionListener(this);
 		
-	    state = IDLE;
 	    
-	    width = ip.getWidth();
-	    height = ip.getHeight();
+	    
+
 		
 
 	    oldToolbar = Toolbar.getInstance();
@@ -135,22 +246,6 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		}		
 	    }
 	    oldToolbar.setTool(LiveWireId);
-
-		/**
-		 * This part will remove the old toolbar
-		 */
-		/*
-		Container container = oldToolbar.getParent();
-		Component[] components = container.getComponents();
-		for(int i=0; i< components.length; i++){
-			if(components[i] == oldToolbar){
-				container.remove(i);
-				//TODO add new toolbar here
-				//container.add(newToolbar)
-				break;
-			}
-		}
-		container.validate();*/
 		
 		ImageWindow iw;
 		ImageCanvas ic;
@@ -169,12 +264,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		        i = offset + x;
 		        pixels[i] = (byte)(255-pixels[i]);
 		    }
-		}*/
-
-		
-		//initializing DIJKSTRA
-		byte[] pixels = (byte[]) ip.getPixels();
-	        dj = new Dijkstraheap (pixels,ip.getWidth(),ip.getHeight());
+		}*/										
 		
 
 			//int x = e.getX();
@@ -295,10 +385,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		*/ 
 		//Sobel Test ends here
 		
-		//initializing selections
-		selx = new int[width*height];
-		sely = new int[width*height];
-		selSize = 0;
+		
 
 			
 	}
@@ -486,14 +573,15 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 
 	public void mousePressed(MouseEvent e) {
 		//if other tool is selected, we should return
-		if( Toolbar.getToolId() != LiveWireId )
+		//thanks to Volker Bäcker for the return when spacebar is down!
+		if( Toolbar.getToolId() != LiveWireId  || IJ.spaceBarDown())
 			return;
 		//if zoom mode is working, we should convert x and y coordinates
 		int myx = canvas.offScreenX(e.getX());
 		int myy = canvas.offScreenY(e.getY());
 		
-		if(e.getButton()== MouseEvent.BUTTON1){		
-			if(state == IDLE){
+		if(e.getButton()== MouseEvent.BUTTON1){
+            if((state == IDLE && selSize==0) || (state==IDLE && IJ.shiftKeyDown())){			
 				myHandle = -1;
 				if(pRoi!=null)
 					myHandle = pRoi.isHandle(myx,myy);
@@ -505,13 +593,36 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 					//we are going back to segment
 					IJ.runMacro("setOption('DisablePopupMenu', true)");
 					state = WIRE;
+                    
+					if(selSize>0){
+                        //retrieve last point to Dijkstra
+                        dj.setPoint(selx[selSize-1],sely[selSize-1]);
+                        return;
+                    }
+					
+					/*if(selSize>0){
+						selSize=0;
+						tempSize =0;
+						anchor.clear();
+						selIndex.clear();
+					}*/
+						/*
 					if(selSize>0){
 						//retrieve last point to Dijkstra
 						dj.setPoint(selx[selSize-1],sely[selSize-1]);
 						return;
 					}
+					*/
 				}
 			}
+            else{
+            	//Volker code, to finish old selection
+            	if (state==IDLE) {
+                    img.killRoi();
+                    initialize(img.getProcessor());
+                    mousePressed(e); // initialize will set selSize to zero, so this is not an endless-loop
+            	}
+            }
 			
 			
 			
@@ -921,4 +1032,59 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 				
 		}		
 	}
+	
+	//initialize function -- thanks to Volker Bäcker
+    private void initialize(ImageProcessor ip) {
+
+//      initialize Anchor
+       anchor = new ArrayList<Point>();
+       selIndex = new ArrayList<Integer>();
+
+       dijX = -1;
+       dijY = -1;
+
+       //sets temporary selection size to zero
+       tempSize = 0;
+
+       //sets handle selected
+       myHandle=-1;
+
+       state = IDLE;
+
+       width = ip.getWidth();
+       height = ip.getHeight();
+       
+       //initializing DIJKSTRA
+       pixels = getPixels(ip);
+       dj = new Dijkstraheap (pixels,ip.getWidth(),ip.getHeight());
+
+       //initializing selections
+       selx = new int[width*height];
+       sely = new int[width*height];
+       selSize = 0;
+       //Daniel
+       pRoi = null;
+    }
+    //	change by Voker Bäcker to accept color images
+	//it will convert the original color image to grayscale
+	//and then use the grayscale image to do the segmentation    
+    protected byte[] getPixels(ImageProcessor ip) {
+            byte[] pixels;
+            if (img.getType()==ImagePlus.GRAY8) {
+                    pixels = (byte[]) ip.getPixels();
+            } else {
+                    Roi aRoi = img.getRoi();
+                    img.killRoi();
+                    Duplicater duplicater = new Duplicater();
+                    ImagePlus greyscaleImage =duplicater.duplicateStack(img, img.getTitle() + " - grey");
+                    WindowManager.setTempCurrentImage(greyscaleImage);
+                    IJ.run("8-bit");
+                    WindowManager.setTempCurrentImage(null);
+                    pixels = (byte[]) greyscaleImage.getProcessor().getPixels();
+                    img.setRoi(aRoi);
+            }
+            return pixels;
+    }
+
+	
 }
