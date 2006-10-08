@@ -93,13 +93,15 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 					);			
 		}
 		
-		initialize(ip);						
-
-		
 		//		test Macro
 		// make sure we grab the parameters before any other macro is run, 
 		// like the one that converts to grayscale
-		String arg = Macro.getOptions();	    				
+		String arg = Macro.getOptions();	    	
+		
+		initialize(ip);						
+
+		
+					
 						
 		if(arg!=null){
 			//we are being run from a Macro
@@ -162,9 +164,9 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		     }
 		     		     
 		     dj = new Dijkstraheap (pixels,ip.getWidth(),ip.getHeight());		     
-		     dj.setGWeight(mag);
-		     dj.setDWeight(dir);
-		     dj.setEWeight(exp);
+		     dj.setGWeight((double)mag/100);
+		     dj.setDWeight((double)dir/100);
+		     dj.setEWeight((double)exp/100);
 		     dj.setPWeight(pow);
 		     dj.setPoint(x0,y0);
 		     
@@ -392,7 +394,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	
 	void showAbout() {
 	    IJ.showMessage("About LiveWire_...",
-	    "This sample plugin segments 8-bit images and needs \n" +
+	    "This sample plugin segments all non-stack images and needs \n" +
 	    "Java 1.5. For more information look at the following page\n" +
 	    " http://ivussnakes.sourceforge.net/ for more info"
 
