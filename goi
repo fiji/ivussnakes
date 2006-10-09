@@ -7,6 +7,6 @@ cp ./ij/gui/ERoi.java ./source/ij/gui/
 
 javac -cp ij.jar:tools.jar -d . ij/gui/ERoi.java Dijkstraheap.java Vector2d.java IVUS_.java 
 
-jar cf IVUS_.jar Dijkstraheap.class IVUS_.class IVUS_\$1.class IVUS_\$2.class IVUS_\$3.class  IVUS_\$4.class IVUS_\$5.class PixelNode.class Vector2d.class ij/gui/ERoi.class ./source/*.java README.txt
+jar cf IVUS_.jar Dijkstraheap.class IVUS_*.class PixelNode.class Vector2d.class ij/gui/ERoi.class ./source/*.java README.txt
 
 cp -f ./IVUS_.jar /home/baggio/InCor/source/plugins

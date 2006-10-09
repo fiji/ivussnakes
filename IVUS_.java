@@ -1,5 +1,6 @@
 import ij.IJ;
 import ij.ImagePlus;
+import ij.ImageStack;
 import ij.Macro;
 import ij.WindowManager;
 import ij.gui.ERoi;
@@ -7,15 +8,15 @@ import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.PolygonRoi;
 import ij.gui.Roi;
+import ij.gui.StackWindow;
 import ij.gui.Toolbar;
 import ij.plugin.filter.Duplicater;
 import ij.plugin.filter.PlugInFilter;
+import ij.plugin.frame.RoiManager;
 import ij.process.ImageProcessor;
 
-import java.awt.Component;
 import java.awt.Point;
 import java.awt.Polygon;
-import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -23,13 +24,8 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.util.ArrayList;
 
-import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JSlider;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 
 public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
     final int IDLE   = 0;
@@ -46,7 +42,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
     Toolbar oldToolbar;
     static int LiveWireId;//id to hold new tool so that we won't select other tools
     
-    byte[] pixels;//image pixels
+    
 	int[] selx; //selection x points
 	int[] sely; //selection y points
 	int selSize;//selection size
@@ -62,7 +58,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 	JFrame frame;
 	
     
-    Dijkstraheap dj;
+    
     double gw;//magnitude weight
     double dw;//direction weight
     double ew;//exponential weight
@@ -81,6 +77,9 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
     int[] pE; //x coord of East  Points for each z
     int[] pW; //x coord of West  Points for each z
     int numCuts;
+    
+    byte[] pixels;//image pixels
+    Dijkstraheap dj;
     
     
 
@@ -180,7 +179,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 	private int calcNumCuts() {
 		// calculate the number of Slices
 		// pay attention if DICOM is used
-		return 201;
+		return 351;
 	}
 
 
@@ -188,16 +187,21 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 		iwStack = WindowManager.getCurrentWindow();
 	    //North-South slice
         IJ.makeLine(width/2,0,width/2,height);
-	    IJ.run("Reslice [/]...", "input=0.034 output=0.034 slice=1 rotate");	    
+	    IJ.run("Reslice [/]...", "input=0.028 output=0.028 slice=1 rotate");	    
 	    iwNS = WindowManager.getCurrentWindow();
 	    iwNS.setTitle("NS Slice");
 	    
 	    //West East
 	    WindowManager.setCurrentWindow(iwStack);
 	    IJ.makeLine(0,height/2,width,height/2);
-	    IJ.run("Reslice [/]...", "input=0.034 output=0.034 slice=1 rotate");
+	    IJ.run("Reslice [/]...", "input=0.028 output=0.028 slice=1 rotate");	    
 	    iwWE = WindowManager.getCurrentWindow();
 	    iwWE.setTitle("WE Slice");
+	    
+	    //kill Roi	    
+	    iwStack.getImagePlus().killRoi();
+	    
+	    
 	}
 
 
@@ -235,7 +239,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
     		    		pN[p.xpoints[i]]=p.ypoints[i];    		    		
     		    	}
     		    }
-    		    bMarkUpNS.setEnabled(false);
+    		    //bMarkUpNS.setEnabled(false);
     		}
     	} );
         
@@ -258,7 +262,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
     		    		pS[p.xpoints[i]]=p.ypoints[i];
     		    	}
     		    }
-    		    bMarkDownNS.setEnabled(false);
+    		    //bMarkDownNS.setEnabled(false);
     		}
     	} );
         
@@ -282,7 +286,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
     		    		pE[p.xpoints[i]]=p.ypoints[i];
     		    	}
     		    }
-    		    bMarkDownWE.setEnabled(false);
+    		    //bMarkDownWE.setEnabled(false);
     		}
     	} );
         
@@ -306,7 +310,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
     		    		pW[p.xpoints[i]]=p.ypoints[i];
     		    	}
     		    }    			    			
-    		    bMarkUpWE.setEnabled(false);
+    		    //bMarkUpWE.setEnabled(false);
     		}
     	} );
         
@@ -314,20 +318,40 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
         final javax.swing.JButton bSelect; //this button commits the selection		
 	    
         bSelect = new javax.swing.JButton();        
-        bSelect.setActionCommand("Make Selection");
-        bSelect.setText("Make Selection");
+        bSelect.setActionCommand("Make Rectangle Selection");
+        bSelect.setText("Make Rectangle Selection");
         bSelect.addActionListener( new ActionListener() {
     		public void actionPerformed( ActionEvent e ) {
-    		    System.out.println("Polygon Points");
-   		    	for(int i=0;i< numCuts;i++){
-   		    		System.out.println("Slice "+ (i+1)+ " N ( " + (width/2) + " ,  " + pN[i]    + " ) " 
-   		    										+ " E ( " + pE[i]     + " ,  " + height/2 + " ) "
-   		    										+ " S ( " + (width/2) + " ,  " + pS[i]    + " ) "
-   		    										+ " W ( " + pW[i]     + " ,  " + height/2 + " ) ");
-   		    	}    		    
-    		    bSelect.setEnabled(false);
+    			makeSelection();    			    			    		    			
     		}
+			
     	} );
+        
+        final javax.swing.JButton bLiveSelect; //this button commits the selection		
+	    
+        bLiveSelect = new javax.swing.JButton();        
+        bLiveSelect.setActionCommand("Make LiveWire Selection");
+        bLiveSelect.setText("Make LiveWire Selection");
+        bLiveSelect.addActionListener( new ActionListener() {
+    		public void actionPerformed( ActionEvent e ) {
+    			makeLiveSelection();    			    			    		    			
+
+    		}		
+			
+    	} );
+        
+        final javax.swing.JButton bPlay; //this button plays the selection		
+	    
+        bPlay = new javax.swing.JButton();        
+        bPlay.setActionCommand("Play Selection");
+        bPlay.setText("Play Selection");
+        bPlay.addActionListener( new ActionListener() {
+    		public void actionPerformed( ActionEvent e ) {    	    			    	
+    			showSelections();    			    			    			
+    		}
+			
+    	} );
+
         
         
         frame.getContentPane().setLayout( new BoxLayout( frame.getContentPane(), BoxLayout.Y_AXIS ) );        
@@ -335,10 +359,132 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
         frame.getContentPane().add(bMarkDownNS);
         frame.getContentPane().add(bMarkUpWE);
         frame.getContentPane().add(bMarkDownWE);
-        frame.getContentPane().add(bSelect);        
+        frame.getContentPane().add(bSelect);
+        frame.getContentPane().add(bLiveSelect);
+        frame.getContentPane().add(bPlay);        
         frame.pack();
         frame.setVisible(true);        
 	}
+	
+	/**
+	 * Makes selections based on the points collect from Mark points buttons
+	 * They will be drawn clockwise and then added to ROI Manager 
+	 * 
+	 * @author baggio
+	 */
+	private void makeSelection() {
+		WindowManager.setCurrentWindow(iwStack);
+		StackWindow sw = (StackWindow)iwStack;
+		ImageStack stack = iwStack.getImagePlus().getStack();
+		
+		for(int i=0;i<stack.getSize();i++){
+			sw.showSlice(i+1);
+			Roi aRoi = new Roi(pW[i], pN[i], pE[i]-pW[i],pS[i]-pN[i]);
+			sw.getImagePlus().setRoi(aRoi);
+			IJ.run("Add to Manager ");
+			
+		}		
+		
+	}
+	/**
+	 * Same as makeSelection, but this time, uses LiveWire to join points clockwise
+	 *
+	 */
+	private void makeLiveSelection() {	
+		(new Thread(){ public void run(){
+		WindowManager.setCurrentWindow(iwStack);
+		StackWindow sw = (StackWindow)iwStack;
+		ImageStack stack = iwStack.getImagePlus().getStack();
+		
+		for(int i=0;i<stack.getSize();i++){
+			sw.showSlice(i+1);
+			ImagePlus myIp = sw.getImagePlus();
+			ImageProcessor myIpr = myIp.getProcessor();			
+			//arrays to store selections
+			int[] tx = new int[height*width];
+			int[] ty = new int[height*width];
+			PolygonRoi pRoi;
+			Polygon tp;
+			int count = 0;
+			
+			//North to East
+			IJ.run ("LiveWire", "x0="+ (width/2) + " y0=" + pN[i] + " x1=" + pE[i] + " y1=" +(height/2)+ " magnitude=43 direction=13 exponential=0 power=10");
+			
+			pRoi = (PolygonRoi)sw.getImagePlus().getRoi();
+			tp = pRoi.getPolygon();	
+			
+			for(int j=0;j<tp.npoints;j++){
+				tx[count]=tp.xpoints[j];
+				ty[count]=tp.ypoints[j];
+				count++;
+			}
+			
+			//East to South
+			IJ.run ("LiveWire", "x0="+ pE[i] + " y0=" + (height/2) + " x1=" + (width/2) + " y1=" +pS[i]+ " magnitude=43 direction=13 exponential=0 power=10");
+			
+			pRoi = (PolygonRoi)sw.getImagePlus().getRoi();
+			tp = pRoi.getPolygon();	
+			
+			for(int j=0;j<tp.npoints;j++){
+				tx[count]=tp.xpoints[j];
+				ty[count]=tp.ypoints[j];
+				count++;
+			}
+			
+			//South to West
+			IJ.run ("LiveWire", "x0="+ (width/2) + " y0=" + pS[i] + " x1=" + pW[i] + " y1=" + (height/2) + " magnitude=43 direction=13 exponential=0 power=10");
+			
+			pRoi = (PolygonRoi)sw.getImagePlus().getRoi();
+			tp = pRoi.getPolygon();	
+			
+			for(int j=0;j<tp.npoints;j++){
+				tx[count]=tp.xpoints[j];
+				ty[count]=tp.ypoints[j];
+				count++;
+			}
+			
+			//West to North
+			IJ.run ("LiveWire", "x0="+ pW[i] + " y0=" + (height/2) + " x1=" + (width/2) + " y1=" + pN[i] + " magnitude=43 direction=13 exponential=0 power=10");
+			
+			pRoi = (PolygonRoi)sw.getImagePlus().getRoi();
+			tp = pRoi.getPolygon();	
+			
+			for(int j=0;j<tp.npoints;j++){
+				tx[count]=tp.xpoints[j];
+				ty[count]=tp.ypoints[j];
+				count++;
+			}
+			
+			Polygon p = new Polygon(tx,ty,count);			
+			PolygonRoi finalRoi = new PolygonRoi(p,Roi.TRACED_ROI);
+			sw.getImagePlus().setRoi(finalRoi);
+			
+			//Roi aRoi = new Roi(pW[i], pN[i], pE[i]-pW[i],pS[i]-pN[i]);
+			//sw.getImagePlus().setRoi(aRoi);
+			IJ.run("Add to Manager ");
+			
+		}
+		}}).start();		
+	}
+	public void showSelections(){
+		(new Thread(){ public void run(){
+			ImageStack stack = iwStack.getImagePlus().getStack();
+			for(int i=0;i<stack.getSize();i++){
+				RoiManager rm =(RoiManager) WindowManager.getFrame("ROI Manager");
+				rm.select(i);			
+				WindowManager.setCurrentWindow(iwStack);
+				
+				//roiManager("Select", i);
+				try {
+					Thread.sleep(50);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}			
+		}}).start();		
+	}
+	
 
 	public void mouseClicked(MouseEvent e) {
 				
@@ -857,7 +1003,6 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
                     img.setRoi(aRoi);
             }
             return pixels;
-    }
-
+    }    
 	
 }
