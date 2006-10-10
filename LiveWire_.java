@@ -1,6 +1,7 @@
 import ij.IJ;
 import ij.ImagePlus;
 import ij.Macro;
+import ij.Prefs;
 import ij.WindowManager;
 import ij.gui.ERoi;
 import ij.gui.ImageCanvas;
@@ -12,6 +13,7 @@ import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.event.ActionEvent;
@@ -31,7 +33,7 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListener {
-    final int IDLE   = 0;
+	final int IDLE   = 0;
     final int WIRE   = 1;
     final int HANDLE = 2;
     
@@ -44,6 +46,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     ImagePlus lapzero;//image to visualize zero crossing laplacian
     Toolbar oldToolbar;
     static int LiveWireId;//id to hold new tool so that we won't select other tools
+    int roiType = Roi.FREELINE;
     
     byte[] pixels;//image pixels
 	int[] selx; //selection x points
@@ -71,12 +74,20 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     ArrayList<Integer> selIndex;//stores selection index to create new anchors in 
                                 //between points and move them
 
+    protected static Cursor defaultCursor = new Cursor(Cursor.DEFAULT_CURSOR);
+	protected static Cursor handCursor = new Cursor(Cursor.HAND_CURSOR);
+	protected static Cursor moveCursor = new Cursor(Cursor.MOVE_CURSOR);
+	protected static Cursor crosshairCursor = new Cursor(Cursor.CROSSHAIR_CURSOR);
+	
 	public int setup(String arg, ImagePlus imp) {		
 		this.img = imp;
 		if (arg.equals("about")) {
 		    showAbout();
 		    return DONE;
-		}					
+		}				
+		if (arg.equals("area")) {
+			roiType = Roi.TRACED_ROI;
+		}
 		return DOES_ALL;//+DOES_STACKS+SUPPORTS_MASKING;//DOES_8G+DOES_STACKS+SUPPORTS_MASKING;
 	}
 
@@ -206,7 +217,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 				
 				
 				Polygon myAnchor = new Polygon(ax,ay,anchor.size());
-				pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+				pRoi = new ERoi(p,roiType, myAnchor);		
 				img.setRoi(pRoi);
 		     
 		     //System.out.println("Values x0 " + x0 + " x1 "+ x1 + " y0 " + y0 + " y1 " + y1 + " mag " + mag +
@@ -575,7 +586,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 
 	public void mousePressed(MouseEvent e) {
 		//if other tool is selected, we should return
-		//thanks to Volker Bäcker for the return when spacebar is down!
+		//thanks to Volker Baecker for the return when spacebar is down!
 		if( Toolbar.getToolId() != LiveWireId  || IJ.spaceBarDown())
 			return;
 		//if zoom mode is working, we should convert x and y coordinates
@@ -583,63 +594,32 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		int myy = canvas.offScreenY(e.getY());
 		
 		if(e.getButton()== MouseEvent.BUTTON1){
-            if((state == IDLE && selSize==0) || (state==IDLE && IJ.shiftKeyDown())){			
-				myHandle = -1;
-				if(pRoi!=null)
-					myHandle = pRoi.isHandle(myx,myy);
-				if(myHandle!=-1){
-					state = HANDLE;
-					return;
-				}
-				else{
-					//we are going back to segment
-					IJ.runMacro("setOption('DisablePopupMenu', true)");
-					state = WIRE;
-                    
-					if(selSize>0){
-                        //retrieve last point to Dijkstra
-                        dj.setPoint(selx[selSize-1],sely[selSize-1]);
-                        return;
-                    }
-					
-					/*if(selSize>0){
-						selSize=0;
-						tempSize =0;
-						anchor.clear();
-						selIndex.clear();
-					}*/
-						/*
-					if(selSize>0){
-						//retrieve last point to Dijkstra
-						dj.setPoint(selx[selSize-1],sely[selSize-1]);
-						return;
-					}
-					*/
-				}
+            handleMouseButton1Pressed(myx, myy);
+            return;
+		}
+		if(e.getButton()== MouseEvent.BUTTON3){			
+			handleMouseButton3Pressed(myx, myy);
+		}
+		
+	}
+
+	
+
+
+	protected void handleMouseButton3Pressed(int myx, int myy) {
+		if(state == WIRE){
+			
+			if(!((dijX==myx)&&(dijY==myy))){
+				return;
 			}
-            else{
-            	//Volker code, to finish old selection
-            	if (state==IDLE) {
-                    img.killRoi();
-                    initialize(img.getProcessor());
-                    mousePressed(e); // initialize will set selSize to zero, so this is not an endless-loop
-            	}
-            }
 			
+			IJ.runMacro("setOption('DisablePopupMenu', false)");
+			state = IDLE;
 			
+			//same thing as in left click
+			anchor.add(new Point(myx,myy));
 			
-			
-			//be careful, in first time we should not subtract 1
-			if(selSize+tempSize==0){
-				selIndex.add(selSize+tempSize);
-			}
-			else{
-				selIndex.add(selSize+tempSize-1);
-				if(!((dijX==myx)&&(dijY==myy))){
-					return;
-				}
-			}
-			anchor.add(new Point(myx,myy));			
+			selIndex.add(selSize+tempSize-1);				
 			
 			//updates handle squares
 			Polygon p = new Polygon(selx,sely,selSize+tempSize);
@@ -653,71 +633,83 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 			
 			
 			Polygon myAnchor = new Polygon(ax,ay,anchor.size());
-			pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+			pRoi = new ERoi(p,roiType, myAnchor);		
 			img.setRoi(pRoi);
-			
-			
 			
 			dj.setPoint(myx,myy);
 				
-			for(int i=0;i<tempSize;i++){
+			for(int i=0;i<tempSize;i++){					
 				selx[selSize+i]=tempx[i];
 				sely[selSize+i]=tempy[i];					
 			}
-			selSize+=tempSize;
+			selSize+=tempSize;	
 			tempSize=0;
+			
 		}
-		else if(e.getButton()== MouseEvent.BUTTON3){			
-			if(state == WIRE){
-				
-				if(!((dijX==myx)&&(dijY==myy))){
-					return;
-				}
-				
-				
-				
-				IJ.runMacro("setOption('DisablePopupMenu', false)");
-				state = IDLE;
-				
-				
-				//same thing as in left click
-				anchor.add(new Point(myx,myy));
-				
-				
-				selIndex.add(selSize+tempSize-1);				
-				
-				//updates handle squares
-				Polygon p = new Polygon(selx,sely,selSize+tempSize);
-				int[] ax = new int[anchor.size()];
-				int[] ay = new int[anchor.size()];
-				
-				for(int i=0;i<anchor.size();i++){
-					ax[i] = (int) ((Point)(anchor.get(i))).getX();
-					ay[i] = (int) ((Point)(anchor.get(i))).getY();								
-				}
-				
-				
-				Polygon myAnchor = new Polygon(ax,ay,anchor.size());
-				pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
-				img.setRoi(pRoi);
-				
-				
-				
-				dj.setPoint(myx,myy);
-					
-				for(int i=0;i<tempSize;i++){					
-					selx[selSize+i]=tempx[i];
-					sely[selSize+i]=tempy[i];					
-				}
-				selSize+=tempSize;	
-				tempSize=0;
-				
-			}
-		}
-		
 	}
 
-	
+
+	protected void handleMouseButton1Pressed(int myx, int myy) {
+		if (state == IDLE) {
+			myHandle = -1;
+			if(pRoi!=null)
+				myHandle = pRoi.isHandle(myx,myy);
+			if(myHandle!=-1){
+				state = HANDLE;
+				return;
+			}
+			if (selSize!=0 && !IJ.shiftKeyDown()) {
+				img.killRoi();
+				initialize(img.getProcessor());
+				return;
+			}
+			//we are going back to segment
+			IJ.runMacro("setOption('DisablePopupMenu', true)");
+			state = WIRE;
+			if(selSize>0){
+				//retrieve last point to Dijkstra
+				dj.setPoint(selx[selSize-1],sely[selSize-1]);
+				return;
+			}
+		}
+		//be careful, in first time we should not subtract 1
+		if(selSize+tempSize==0){
+			selIndex.add(selSize+tempSize);
+		}
+		else{
+			selIndex.add(selSize+tempSize-1);
+			if(!((dijX==myx)&&(dijY==myy))){
+				return;
+			}
+		}
+		anchor.add(new Point(myx,myy));			
+		
+		//updates handle squares
+		Polygon p = new Polygon(selx,sely,selSize+tempSize);
+		int[] ax = new int[anchor.size()];
+		int[] ay = new int[anchor.size()];
+		
+		for(int i=0;i<anchor.size();i++){
+			ax[i] = (int) ((Point)(anchor.get(i))).getX();
+			ay[i] = (int) ((Point)(anchor.get(i))).getY();								
+		}
+		
+		
+		Polygon myAnchor = new Polygon(ax,ay,anchor.size());
+		pRoi = new ERoi(p,roiType, myAnchor);		
+		img.setRoi(pRoi);
+		
+		
+		
+		dj.setPoint(myx,myy);
+			
+		for(int i=0;i<tempSize;i++){
+			selx[selSize+i]=tempx[i];
+			sely[selSize+i]=tempy[i];					
+		}
+		selSize+=tempSize;
+		tempSize=0;
+	}
 
 
 	public void mouseReleased(MouseEvent e)  {
@@ -868,7 +860,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 				
 				
 				Polygon myAnchor = new Polygon(ax,ay,anchor.size());
-				pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+				pRoi = new ERoi(p,roiType, myAnchor);		
 				img.setRoi(pRoi);
 				
 			state = IDLE;
@@ -968,7 +960,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 				
 				
 				Polygon myAnchor = new Polygon(ax,ay,anchor.size());
-				pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+				pRoi = new ERoi(p,roiType, myAnchor);		
 				img.setRoi(pRoi);
 				
 			
@@ -982,13 +974,14 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	public void mouseMoved(MouseEvent e) {	
 		//if other tool is selected, we should return
 		if( Toolbar.getToolId() != LiveWireId )
-			return;		
-
+			return;	
+	
 		//if zoom mode is working, we should convert x and y coordinates
 		int myx = canvas.offScreenX(e.getX());
 		int myy = canvas.offScreenY(e.getY());
 					
-					
+		changeMousePointer(myx, myy);
+		
 	    //		IJ.write("Mouse moving with x at " + e.getX());
 		if(state==WIRE){
 			int[] vx = new int[width*height];
@@ -1024,15 +1017,26 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 			
 			
 			Polygon myAnchor = new Polygon(ax,ay,anchor.size());
-			pRoi = new ERoi(p,Roi.FREELINE, myAnchor);		
+			pRoi = new ERoi(p,roiType, myAnchor);		
 			img.setRoi(pRoi);
 			if(size[0]==0)
-				IJ.showStatus("Please, wait. Still creating the LiveWire");
-			
-			
-
-				
+				IJ.showStatus("Please, wait. Still creating the LiveWire");				
 		}		
+	}
+
+
+	private void changeMousePointer(int myx, int myy) {
+		if (state==WIRE) return;
+		ImageCanvas canvas = img.getWindow().getCanvas();
+		myHandle = -1;
+		if(pRoi!=null)
+			myHandle = pRoi.isHandle(myx,myy);
+		if(myHandle!=-1){
+			canvas.setCursor(handCursor);
+		} else if (Prefs.usePointerCursor)
+			canvas.setCursor(defaultCursor);
+			else
+				canvas.setCursor(crosshairCursor);
 	}
 	
 	//initialize function -- thanks to Volker Bäcker
@@ -1088,5 +1092,4 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
             return pixels;
     }
 
-	
 }
