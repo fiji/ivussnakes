@@ -602,7 +602,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 				storePoints();							
 			}
 												
-			if(fourSlices){			
+			if(fourSlices==false){			
 				//West to North
 				IJ.run ("LiveWire", "x0="+ pW[i] + " y0=" + (height/2) + " x1=" + (width/2) + " y1=" + pN[i] + " magnitude=43 direction=13 exponential=0 power=10");						
 				storePoints();
