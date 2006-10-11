@@ -35,10 +35,17 @@ class Dijkstraheap implements Runnable{
     
     private double gw;//Gradient Magnitude Weight - set by setGWeight
     private double dw;//Gradient Direction Weight - set by setDWeight
+    private double zw;//Laplacian Zero Cross Weight - set by setZWeight
     private double ew;//Exponential        Weight - set by setEWeight
     private double pw;//Exponential Potence Weight - set by setPWeight
     
     double[][] pCosts;//for debugin reasons
+    
+    byte [] lap5;
+    byte [] lap5zc; //zero cross laplacian
+    
+    byte [] lap9;
+    byte [] lap9zc; //zero cross laplacian
      
 
     static int INF = 0x7FFFFFFF; //maximum integer
@@ -107,12 +114,114 @@ class Dijkstraheap implements Runnable{
 	    if(gradientr[i]<grmin) grmin=gradientr[i];
 	    if(gradientr[i]>grmax) grmax=gradientr[i];
 	}
-	//TAKE ME OUT!!!
-	
-	//	grmin += 600;
-
 
     }
+    public void setLap5(byte[] myLap){
+    	lap5 = myLap;
+    	return;
+    }
+    public void initLapZC5(){ //initializes Laplacian ZeroCrossing order for 5x5
+        lap5zc = new byte[height*width];
+    	
+        for(int y=0;y<height;y++){
+    		for(int x=0;x<width;x++){
+				lap5zc[toIndex(x,y)]=1;
+    		}
+        }
+        //seeks horizontaly for signal change
+    	for(int y=0;y<height;y++){    		
+    		for(int x=0;x<width-1;x++){
+    			if(lap5[toIndex(x,y)]*lap5[toIndex(x+1,y)] < 0){//different signals?
+    				if(Math.abs(lap5[toIndex(x,y)])<Math.abs(lap5[toIndex(x+1,y)])){
+    					//x is nearer zero
+    					lap5zc[toIndex(x,y)]=0;
+    				}
+    				else{
+    					//x+1 is nearer zero
+    					lap5zc[toIndex(x+1,y)]=0;    					
+    				}
+    			}
+    		}
+    	}
+    	//seeks vertically for signal change
+    	for(int x=0;x<width;x++){
+    		for(int y=0;y<height-1;y++){    		
+    	
+    			if(lap5[toIndex(x,y)]*lap5[toIndex(x,y+1)] < 0){//different signals?
+    				if(Math.abs(lap5[toIndex(x,y)])<Math.abs(lap5[toIndex(x,y+1)])){
+    					//x is nearer zero
+    					lap5zc[toIndex(x,y)]=0;
+    				}
+    				else{
+    					//x+1 is nearer zero
+    					lap5zc[toIndex(x,y+1)]=0;    					
+    				}
+    			}
+    		}
+    	}
+    
+    }
+    
+    
+    public byte[] getLap5ZC(){
+    	return lap5zc;
+    }
+    
+    
+    public void setLap9(byte[] myLap){
+    	lap9 = myLap;
+    	return;
+    }
+    public void initLapZC9(){ //initializes Laplacian ZeroCrossing order for 5x5
+        lap9zc = new byte[height*width];
+    	
+        for(int y=0;y<height;y++){
+    		for(int x=0;x<width;x++){
+				lap9zc[toIndex(x,y)]=1;
+    		}
+        }
+        //seeks horizontaly for signal change
+    	for(int y=0;y<height;y++){    		
+    		for(int x=0;x<width-1;x++){
+    			if(lap9[toIndex(x,y)]*lap9[toIndex(x+1,y)] < 0){//different signals?
+    				if(Math.abs(lap9[toIndex(x,y)])<Math.abs(lap9[toIndex(x+1,y)])){
+    					//x is nearer zero
+    					lap9zc[toIndex(x,y)]=0;
+    				}
+    				else{
+    					//x+1 is nearer zero
+    					lap9zc[toIndex(x+1,y)]=0;    					
+    				}
+    			}
+    		}
+    	}
+//    	seeks horizontaly for signal change
+    	    		
+    	for(int x=0;x<width;x++){
+    		for(int y=0;y<height-1;y++){
+    			if(lap9[toIndex(x,y)]*lap9[toIndex(x,y+1)] < 0){//different signals?
+    				if(Math.abs(lap9[toIndex(x,y)])<Math.abs(lap9[toIndex(x,y+1)])){
+    					//x is nearer zero
+    					lap9zc[toIndex(x,y)]=0;
+    				}
+    				else{
+    					//x+1 is nearer zero
+    					lap9zc[toIndex(x,y+1)]=0;    					
+    				}
+    			}
+    		}
+    	}
+    	
+    	
+    
+    }
+    
+    
+    public byte[] getLap9ZC(){
+    	return lap9zc;
+    }
+
+    
 
     public void getGradientX(double[] mat){
 	for(int i=0;i<height;i++){
@@ -147,6 +256,7 @@ class Dijkstraheap implements Runnable{
     	//initializes weights for edge cost
     	//these are default values
     	gw = 0.43;
+    	zw = 0.0;
     	dw = 0.13;
     	ew = 0.0;
     	pw = 30;
@@ -260,8 +370,12 @@ class Dijkstraheap implements Runnable{
 			   + "Gradp(" + gradientx[toIndex(sx,sy)]+ ","+gradienty[toIndex(sx,sy)]+ ") " 
 			   + "Gradq(" + gradientx[toIndex(dx,dy)]+ ","+gradienty[toIndex(dx,dy)]+ ")");*/
 
+	double l5 = (double)(lap5zc[toIndex(dx,dy)]& 0xff);
+	double l9 = (double)(lap9zc[toIndex(dx,dy)]& 0xff);
+	double fz = 0.45*l5+0.55*l9;
+	
 	//return Math.abs(imagePixels[toIndex(dx,dy)]-imagePixels[toIndex(sx,sy)]);
-	return ew*fe+gw*fg+dw*fd;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
+	return ew*fe+gw*fg+dw*fd+zw*fz;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
 	
     }
     //sets weights for fg and fd
@@ -270,6 +384,9 @@ class Dijkstraheap implements Runnable{
     }
     public void setDWeight(double pdw){
     	dw = pdw;
+    }
+    public void setZWeight(double pzw){
+    	zw = pzw;
     }
     public void setEWeight(double pew){
     	ew = pew;

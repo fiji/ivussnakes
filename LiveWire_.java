@@ -6,6 +6,7 @@ import ij.WindowManager;
 import ij.gui.ERoi;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
+import ij.gui.NewImage;
 import ij.gui.Roi;
 import ij.gui.Toolbar;
 import ij.plugin.filter.Duplicater;
@@ -60,6 +61,9 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	int dijX;// temporary value for Dijkstra, to check if path is done
 	int dijY;// temporary value for Dijkstra, to check if path is done
 	
+	byte[] lap5;// used to store the 5x5 Laplacian Kernel 
+	byte[] lap9;// used to store the 9x9 Laplacian Kernel
+	
 	//Window related
 	JFrame frame;
 	
@@ -69,6 +73,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     double dw;//direction weight
     double ew;//exponential weight
     double pw;//exponential potence weight
+    double zw;//laplacian zero crossweight
     
     ArrayList<Point> anchor;//stores anchor points
     ArrayList<Integer> selIndex;//stores selection index to create new anchors in 
@@ -117,7 +122,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		if(arg!=null){
 			//we are being run from a Macro
 		     StringTokenizer st = new StringTokenizer(arg,"= ",false);
-		     int x0=0,x1=0,y0=0,y1=0,mag=0,dir=0,exp=0,pow=0 ;
+		     int x0=0,x1=0,y0=0,y1=0,mag=0,dir=0,exp=0,pow=0,zer=0 ;
 		     
 		     while (st.hasMoreTokens()) {
 		    	 String par = st.nextToken();		         
@@ -162,6 +167,11 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		        	 String val = st.nextToken();		        	
 		        		 pow = Integer.parseInt(val);		        	 		        	
 		         }
+		         else if(par.charAt(0)=='z'){ 
+		        	 // reading laplacian zero cross
+		        	 String val = st.nextToken();		        	
+		        		 zer = Integer.parseInt(val);		        	 		        	
+		         }
 
 		     }			
 		     if(
@@ -177,6 +187,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		     dj = new Dijkstraheap (pixels,ip.getWidth(),ip.getHeight());		     
 		     dj.setGWeight((double)mag/100);
 		     dj.setDWeight((double)dir/100);
+		     dj.setZWeight((double)zer/100);
 		     dj.setEWeight((double)exp/100);
 		     dj.setPWeight(pow);
 		     dj.setPoint(x0,y0);
@@ -295,10 +306,10 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 
 		/*
 
-		ImagePlus nova = NewImage.createByteImage("Baggio - Sobel GradientX",ip.getWidth(),ip.getHeight(),1,NewImage.FILL_WHITE);
-		ImageProcessor newImage = nova.getProcessor();
+		ImagePlus nova = NewImage.createByteImage("Baggio - Lap5x5 Zero Cross Hor",ip.getWidth(),ip.getHeight(),1,NewImage.FILL_WHITE);
+		ImageProcessor newImage = nova.getProcessor();*/
 
-		double[] myxgradient = new double[height*width];
+		/*double[] myxgradient = new double[height*width];
 
 		dj.getGradientX(myxgradient);
 		
@@ -307,48 +318,43 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		for(int i=0;i< height*width;i++){
 		    if(myxgradient[i]<gxmin) gxmin=myxgradient[i];
 		    if(myxgradient[i]>gxmax) gxmax=myxgradient[i];
-		}
-
+		}*/
+		/*
+		byte[] pc = dj.getLap5ZC();
 		byte[] newPixels = (byte[]) newImage.getPixels();
 		for (int y = 0; y < height; y++) {
 		    int offset = y * width;
 		    for (int x = 0; x < width; x++) {
 			int i = offset + x;
-			newPixels[i] = (byte)(Math.round((float)(255*((myxgradient[i]-gxmin)/(gxmax-gxmin)))));
+			newPixels[i] = pc[i] ;//(byte)(Math.round((float)(255*((myxgradient[i]-gxmin)/(gxmax-gxmin)))));
 			//			System.out.print(myxgradient[i] + " ");
 		    }
 		    //System.out.println("");	
 		}
 		nova.show();
 		nova.updateAndDraw();
+		
 
-		ImagePlus nova1 = NewImage.createByteImage("Baggio - Sobel GradientY",ip.getWidth(),ip.getHeight(),1,NewImage.FILL_WHITE);
+		ImagePlus nova1 = NewImage.createByteImage("Baggio - Laplacian zero cross 9",ip.getWidth(),ip.getHeight(),1,NewImage.FILL_WHITE);
 		ImageProcessor newImage1 = nova1.getProcessor();
 
-		double[] myygradient = new double[height*width];
-
-		dj.getGradientY(myygradient);
 		
-		double gymin = myygradient[0];
-		double gymax = myygradient[0];
-		for(int i=0;i< height*width;i++){
-		    if(myygradient[i]<gymin) gymin=myygradient[i];
-		    if(myygradient[i]>gymax) gymax=myygradient[i];
-		}
-
+		
+		byte[] pc1 = dj.getLap9ZC();
 		byte[] newPixels1 = (byte[]) newImage1.getPixels();
 		for (int y = 0; y < height; y++) {
 		    int offset = y * width;
 		    for (int x = 0; x < width; x++) {
 			int i = offset + x;
-			newPixels1[i] = (byte)(Math.round((float)(255*((myygradient[i]-gymin)/(gymax-gymin)))));
+			newPixels1[i] = pc1[i] ;//(byte)(Math.round((float)(255*((myxgradient[i]-gxmin)/(gxmax-gxmin)))));
 			//			System.out.print(myxgradient[i] + " ");
 		    }
 		    //System.out.println("");	
 		}
 		nova1.show();
 		nova1.updateAndDraw();
-
+		
+		
 		ImagePlus nova2 = NewImage.createByteImage("Baggio - Sobel Gradient Resultant",ip.getWidth(),ip.getHeight(),1,NewImage.FILL_WHITE);
 		ImageProcessor newImage2 = nova2.getProcessor();
 
@@ -427,6 +433,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     	
     	//initialize weight variables
     	gw = 0.43;
+    	zw = 0.43;
     	dw = 0.13;
     	ew = 0.0;
     	pw = 30;
@@ -499,6 +506,9 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     		}
     	} 
     	);
+    	
+    	
+    	
 
 
     	//label for direction
@@ -521,6 +531,28 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     		}
     	} 
     	);
+    	
+//    	label for the magnitude
+    	final JLabel zLabel = new JLabel( "Zero cross: " + (int) (zw * 100), JLabel.LEFT );
+    	zLabel.setAlignmentX( Component.CENTER_ALIGNMENT);
+    	
+    	//slider for magnitude
+    	final JSlider zSlider = new JSlider( JSlider.HORIZONTAL,
+			       0, (int) (100 * 1.0) ,(int) (100*zw) );
+    	zSlider.setMajorTickSpacing( 20 );
+    	zSlider.setMinorTickSpacing(  5 );
+    	zSlider.setPaintTicks( true );
+    	zSlider.setPaintLabels( true );
+    	zSlider.setBorder( BorderFactory.createEmptyBorder( 0, 0, 10, 0 ) );
+    	
+    	zSlider.addChangeListener( new ChangeListener() {
+    		public void stateChanged( ChangeEvent e ) {
+    			zLabel.setText( "Zero cross: " + zSlider.getValue() );
+    		    zw = ((double)zSlider.getValue())/100;
+    		    //System.out.println("Fg is now " + fg);
+    		}
+    	} 
+    	);
 
     	
         bUpdate.setText("Update");
@@ -531,7 +563,8 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 	    			dj.setPWeight(pw);
 	    			dj.setEWeight(ew);
 	    			dj.setGWeight(gw);
-	    			dj.setDWeight(dw);    			
+	    			dj.setDWeight(dw);
+	    			dj.setZWeight(zw);
 	    			dj.setPoint(dj.getTx(),dj.getTy());
     		    //System.out.println("Fg " + gw + " Fd "+ dw);
     			}
@@ -548,6 +581,8 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
         frame.getContentPane().add(gSlider);
         frame.getContentPane().add(dLabel);
         frame.getContentPane().add(dSlider);
+        frame.getContentPane().add(zLabel);
+        frame.getContentPane().add(zSlider);
         frame.getContentPane().add(bUpdate);
         
                 
@@ -1070,6 +1105,16 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
        selSize = 0;
        //Daniel
        pRoi = null;
+       
+       //for the Laplacian Cost
+       byte[] lap5 = getLap5(ip);
+       byte[] lap9 = getLap9(ip);
+       dj.setLap5(lap5);
+       dj.initLapZC5();
+       dj.setLap9(lap9);
+       dj.initLapZC9();
+                     
+       
     }
     //	change by Voker Bäcker to accept color images
 	//it will convert the original color image to grayscale
@@ -1091,5 +1136,55 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
             }
             return pixels;
     }
+    /***
+     * This function returns a 5x5 Laplacian Kernel convolution
+     * 
+     * @param ip
+     * @return
+     */
+    private byte[] getLap5(ImageProcessor ip){
+    	byte[] lap;
+    	
+        Roi aRoi = img.getRoi();
+        img.killRoi();
+        Duplicater duplicater = new Duplicater();
+        ImagePlus cloneImage =duplicater.duplicateStack(img, img.getTitle() + " - Laplacian 5x5");
+        WindowManager.setTempCurrentImage(cloneImage);
+        IJ.run("8-bit");
+        IJ.run("Convolve...", "text1=[ -2.0931571813508412E-13 -9.378810549698261E-8 -6.6754937450295E-6 -9.378810549698261E-8 -2.0931571813508412E-13 -9.378810549698261E-8 -0.025455099328931086 -1.0024853206200937 -0.025455099328931086 -9.378810549698261E-8 -6.6754937450295E-6 -1.0024853206200937 25.78310078088705 -1.0024853206200937 -6.6754937450295E-6 -9.378810549698261E-8 -0.025455099328931086 -1.0024853206200937 -0.025455099328931086 -9.378810549698261E-8 -2.0931571813508412E-13 -9.378810549698261E-8 -6.6754937450295E-6 -9.378810549698261E-8 -2.0931571813508412E-13 ] normalize");
+        //IJ.run("Convolve...", "text1=[-1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 24 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 ] normalize");        
+        WindowManager.setTempCurrentImage(null);
+        ImageProcessor cip = cloneImage.getProcessor();
+        lap = (byte[]) cip.getPixels();
+        img.setRoi(aRoi);    	    	    	
+    	
+    	return lap;
+    }
+    
+    /***
+     * This function returns a 9x9 Laplacian Kernel convolution
+     * 
+     * @param ip
+     * @return
+     */
+    private byte[] getLap9(ImageProcessor ip){
+    	byte[] lap;
+    	
+        Roi aRoi = img.getRoi();
+        img.killRoi();
+        Duplicater duplicater = new Duplicater();
+        ImagePlus cloneImage =duplicater.duplicateStack(img, img.getTitle() + " - Laplacian 5x5");
+        WindowManager.setTempCurrentImage(cloneImage);
+        IJ.run("8-bit");
+        IJ.run("Convolve...","text1=[  -1.0672490811789438E-59 -3.985481517539577E-46 -1.8802767742294528E-36 -1.1634674354161596E-30 -9.848969620846869E-29 -1.1634674354161596E-30 -1.8802767742294528E-36 -3.985481517539577E-46 -1.0672490811789438E-59 -3.985481517539577E-46 -1.3695317311147838E-32 -5.81802789979942E-23 -3.2474026221765377E-17 -2.624253135211797E-15 -3.2474026221765377E-17 -5.81802789979942E-23 -1.3695317311147838E-32 -3.985481517539577E-46 -1.8802767742294528E-36 -5.81802789979942E-23 -2.0931571813508412E-13 -9.378810549698261E-8 -6.6754937450295E-6 -9.378810549698261E-8 -2.0931571813508412E-13 -5.81802789979942E-23 -1.8802767742294528E-36 -1.1634674354161596E-30 -3.2474026221765377E-17 -9.378810549698261E-8 -0.025455099328931086 -1.0024853206200937 -0.025455099328931086 -9.378810549698261E-8 -3.2474026221765377E-17 -1.1634674354161596E-30 -9.848969620846869E-29 -2.624253135211797E-15 -6.6754937450295E-6 -1.0024853206200937 25.78310078088705 -1.0024853206200937 -6.6754937450295E-6 -2.624253135211797E-15 -9.848969620846869E-29 -1.1634674354161596E-30 -3.2474026221765377E-17 -9.378810549698261E-8 -0.025455099328931086 -1.0024853206200937 -0.025455099328931086 -9.378810549698261E-8 -3.2474026221765377E-17 -1.1634674354161596E-30 -1.8802767742294528E-36 -5.81802789979942E-23 -2.0931571813508412E-13 -9.378810549698261E-8 -6.6754937450295E-6 -9.378810549698261E-8 -2.0931571813508412E-13 -5.81802789979942E-23 -1.8802767742294528E-36 -3.985481517539577E-46 -1.3695317311147838E-32 -5.81802789979942E-23 -3.2474026221765377E-17 -2.624253135211797E-15 -3.2474026221765377E-17 -5.81802789979942E-23 -1.3695317311147838E-32 -3.985481517539577E-46 -1.0672490811789438E-59 -3.985481517539577E-46 -1.8802767742294528E-36 -1.1634674354161596E-30 -9.848969620846869E-29 -1.1634674354161596E-30 -1.8802767742294528E-36 -3.985481517539577E-46 -1.0672490811789438E-59] normalize");
+        //IJ.run("Convolve...","text1=[-1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 80 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 ] normalize");
+        
+        WindowManager.setTempCurrentImage(null);
+        lap = (byte[]) cloneImage.getProcessor().getPixels();
+        img.setRoi(aRoi);    	    	    	
+    	
+    	return lap;
+    }
+        
 
 }
