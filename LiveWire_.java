@@ -433,7 +433,7 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
     	
     	//initialize weight variables
     	gw = 0.43;
-    	zw = 0.43;
+    	zw = 0.00;
     	dw = 0.13;
     	ew = 0.0;
     	pw = 30;
