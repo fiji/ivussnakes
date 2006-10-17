@@ -1,0 +1,19 @@
+macro "Unused Tool - C037" { }
+
+macro "LiveWire 1d Tool-C090T0f15LC00aT5f15wC900Tff111" {
+       getCursorLoc(x, y, z, flags);
+       run("LiveWire1DTool ", "x=" + x + " y=" + y + " z=" + z + " flags=" + flags);       
+}
+
+macro "LiveWire 2d Tool-C090T0f15LC00aT5f15wC900Tff112" {
+       getCursorLoc(x, y, z, flags);
+       run("LiveWire2DTool ", "x=" + x + " y=" + y + " z=" + z + " flags=" + flags);       
+}
+
+macro 'LiveWire 2d Tool Options...' {
+       run("LiveWire2DTool ", "options");
+  }
+
+macro 'LiveWire 1d Tool Options...' {
+       run("LiveWire1DTool ", "options");
+  }
