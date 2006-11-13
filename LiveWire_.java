@@ -180,7 +180,9 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		     (y0<0)||(y0>=ip.getHeight()) ||
 		     (y1<0)||(y1>=ip.getHeight()) 
 		     ){
-		    	 IJ.error("Start or end points are out of the image");
+		    	 IJ.error("Start or end points are out of the image\n" +
+		    			 "x0 = " + x0 + " x1 = " +x1 + " y0 = " + y0 + " y1 " + y1 +" width " + ip.getWidth() + " height " + ip.getHeight()
+		    			 );
 		    	 return;
 		     }
 		     		     
@@ -307,9 +309,9 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		/*
 
 		ImagePlus nova = NewImage.createByteImage("Baggio - Lap5x5 Zero Cross Hor",ip.getWidth(),ip.getHeight(),1,NewImage.FILL_WHITE);
-		ImageProcessor newImage = nova.getProcessor();*/
+		ImageProcessor newImage = nova.getProcessor();
 
-		/*double[] myxgradient = new double[height*width];
+		double[] myxgradient = new double[height*width];
 
 		dj.getGradientX(myxgradient);
 		
@@ -318,15 +320,15 @@ public class LiveWire_ implements PlugInFilter, MouseListener, MouseMotionListen
 		for(int i=0;i< height*width;i++){
 		    if(myxgradient[i]<gxmin) gxmin=myxgradient[i];
 		    if(myxgradient[i]>gxmax) gxmax=myxgradient[i];
-		}*/
-		/*
+		}
+		
 		byte[] pc = dj.getLap5ZC();
 		byte[] newPixels = (byte[]) newImage.getPixels();
 		for (int y = 0; y < height; y++) {
 		    int offset = y * width;
 		    for (int x = 0; x < width; x++) {
 			int i = offset + x;
-			newPixels[i] = pc[i] ;//(byte)(Math.round((float)(255*((myxgradient[i]-gxmin)/(gxmax-gxmin)))));
+			newPixels[i] = (byte)(255* pc[i]) ;//(byte)(Math.round((float)(255*((myxgradient[i]-gxmin)/(gxmax-gxmin)))));
 			//			System.out.print(myxgradient[i] + " ");
 		    }
 		    //System.out.println("");	

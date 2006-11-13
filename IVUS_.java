@@ -6,6 +6,8 @@ import ij.WindowManager;
 import ij.gui.ERoi;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
+import ij.gui.Line;
+import ij.gui.NewImage;
 import ij.gui.PolygonRoi;
 import ij.gui.Roi;
 import ij.gui.StackWindow;
@@ -16,15 +18,23 @@ import ij.plugin.filter.PlugInFilter;
 import ij.plugin.frame.RoiManager;
 import ij.process.ImageProcessor;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.Polygon;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.image.BufferedImage;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 
@@ -161,6 +171,17 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 	    pSE = new int[numCuts];
 	    pSW = new int[numCuts];
 	    pNW = new int[numCuts];
+	    for(int i=0;i<numCuts;i++){
+	    	pS[i]=0;
+		    pN [i]=0;
+		    pW [i]=0;
+		    pE [i]=0;
+		    pNE [i]=0;
+		    pSE [i]=0;
+		    pSW [i]=0;
+		    pNW [i]=0;
+	    }
+	    	
 	    
 	    fourSlices = false;
 	    
@@ -291,8 +312,8 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
         final javax.swing.JButton bMarkDownNS;		
 	    
         bMarkDownNS = new javax.swing.JButton();        
-        bMarkDownNS.setActionCommand("Mark NS down points");
-        bMarkDownNS.setText("Mark NS down points");
+        bMarkDownNS.setActionCommand("Mark NS lower points");
+        bMarkDownNS.setText("Mark NS lower points");
         bMarkDownNS.addActionListener( new ActionListener() {
     		public void actionPerformed( ActionEvent e ) {
     			//set North South slice window
@@ -314,8 +335,8 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
         final javax.swing.JButton bMarkDownWE;		
 	    
         bMarkDownWE = new javax.swing.JButton();        
-        bMarkDownWE.setActionCommand("Mark WE down points");
-        bMarkDownWE.setText("Mark WE down points");
+        bMarkDownWE.setActionCommand("Mark WE lower points");
+        bMarkDownWE.setText("Mark WE lower points");
         bMarkDownWE.addActionListener( new ActionListener() {
     		public void actionPerformed( ActionEvent e ) {
     			//set North South slice window
@@ -339,7 +360,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 	    
         bMarkUpWE = new javax.swing.JButton();        
         bMarkUpWE.setActionCommand("Mark WE upper points");
-        bMarkUpWE.setText("Mark WE upper down points");        
+        bMarkUpWE.setText("Mark WE upper points");        
         bMarkUpWE.addActionListener( new ActionListener() {
     		public void actionPerformed( ActionEvent e ) {
     			//set North South slice window
@@ -387,8 +408,8 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
         final javax.swing.JButton bMarkDownNESW;		
 	    
         bMarkDownNESW = new javax.swing.JButton();        
-        bMarkDownNESW.setActionCommand("Mark NE-SW down points");
-        bMarkDownNESW.setText("Mark NE-SW down points");
+        bMarkDownNESW.setActionCommand("Mark NE-SW lower points");
+        bMarkDownNESW.setText("Mark NE-SW lower points");
         bMarkDownNESW.addActionListener( new ActionListener() {
     		public void actionPerformed( ActionEvent e ) {
     			//set North Eastern South Western slice window
@@ -436,8 +457,8 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
         final javax.swing.JButton bMarkDownNWSE;		
 	    
         bMarkDownNWSE = new javax.swing.JButton();        
-        bMarkDownNWSE.setActionCommand("Mark NW-SE down points");
-        bMarkDownNWSE.setText("Mark NW-SE down points");
+        bMarkDownNWSE.setActionCommand("Mark NW-SE lower points");
+        bMarkDownNWSE.setText("Mark NW-SE lower points");
         bMarkDownNWSE.addActionListener( new ActionListener() {
     		public void actionPerformed( ActionEvent e ) {
     			//set North Eastern South Western slice window
@@ -469,6 +490,17 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 			
     	} );
         
+        final javax.swing.JButton bPolygon; //this button commits the selection		
+	    
+        bPolygon = new javax.swing.JButton();        
+        bPolygon.setActionCommand("Make Polygon Selection");
+        bPolygon.setText("Make Polygon Selection");
+        bPolygon.addActionListener( new ActionListener() {
+    		public void actionPerformed( ActionEvent e ) {
+    			makePolygonSelection();    			    			    		    			
+    		}			
+    	} );
+        
         final javax.swing.JButton bLiveSelect; //this button commits the selection		
 	    
         bLiveSelect = new javax.swing.JButton();        
@@ -481,6 +513,21 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
     		}		
 			
     	} );
+        
+        final javax.swing.JButton bSnakeSelect; //this button commits the selection		
+	    
+        bSnakeSelect = new javax.swing.JButton();        
+        bSnakeSelect.setActionCommand("Make Snake Selection");
+        bSnakeSelect.setText("Make Snake Selection");
+        bSnakeSelect.addActionListener( new ActionListener() {
+    		public void actionPerformed( ActionEvent e ) {
+    			makeSnakeSelection();    			    			    		    			
+
+    		}		
+			
+    	} );
+        
+        
         
         final javax.swing.JButton bPlay; //this button plays the selection		
 	    
@@ -495,19 +542,39 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
     	} );
 
         
+        final javax.swing.JButton bMeasure; //this button measures the selection		
+	    
+        bMeasure = new javax.swing.JButton();
+        bMeasure.setMaximumSize(null);
+        bMeasure.setActionCommand("Make Measures");
+        bMeasure.setText("Make Measures");
+        bMeasure.addActionListener( new ActionListener() {
+    		public void actionPerformed( ActionEvent e ) {    	    			    	
+    			makeMeasures();    			    			    			
+    		}
+			
+    	} );
         
-        frame.getContentPane().setLayout( new BoxLayout( frame.getContentPane(), BoxLayout.Y_AXIS ) );        
-        frame.getContentPane().add(bMarkUpNS);
-        frame.getContentPane().add(bMarkDownNS);
-        frame.getContentPane().add(bMarkUpWE);
-        frame.getContentPane().add(bMarkDownWE);
-        frame.getContentPane().add(bMarkUpNESW);
-        frame.getContentPane().add(bMarkDownNESW);
-        frame.getContentPane().add(bMarkUpNWSE);
-        frame.getContentPane().add(bMarkDownNWSE);        
-        frame.getContentPane().add(bSelect);
-        frame.getContentPane().add(bLiveSelect);
-        frame.getContentPane().add(bPlay);        
+        Box box = Box.createVerticalBox();                
+        
+        //bMeasure.setPreferredSize(new Dimension(10,100));
+        
+        frame.getContentPane().setLayout( new BoxLayout( frame.getContentPane(), BoxLayout.PAGE_AXIS ) );        
+        box.add(bMarkUpNS);
+        box.add(bMarkDownNS);
+        box.add(bMarkUpWE);
+        box.add(bMarkDownWE);
+        box.add(bMarkUpNESW);
+        box.add(bMarkDownNESW);
+        box.add(bMarkUpNWSE);
+        box.add(bMarkDownNWSE);        
+        box.add(bSelect);
+        box.add(bPolygon);
+        box.add(bLiveSelect);
+        box.add(bSnakeSelect);        
+        box.add(bPlay);
+        box.add(bMeasure);
+        frame.getContentPane().add(box,BorderLayout.PAGE_END);        
         frame.pack();
         frame.setVisible(true);        
 	}
@@ -559,7 +626,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 			else{
 				//North to North Eastern
 				double Theta = Math.atan(height/width);
-				int x = width - (int)(Math.round(pNE[i]*Math.cos(Theta)));
+				int x = (width-1) - (int)(Math.round(pNE[i]*Math.cos(Theta)));
 				int y = (int)(Math.round(pNE[i]*Math.sin(Theta)));				
 				IJ.run ("LiveWire", "x0="+ (width/2) + " y0=" + pN[i] + " x1=" + x + " y1=" + y + " magnitude=43 direction=13 exponential=0 power=10");
 				storePoints();
@@ -592,7 +659,7 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 			}
 			else{
 				double Theta = Math.atan(height/width);
-				int x = width - (int)(Math.round(pSW[i]*Math.cos(Theta)));
+				int x = (width-1) - (int)(Math.round(pSW[i]*Math.cos(Theta)));
 				int y = (int)(Math.round(pSW[i]*Math.sin(Theta)));
 				//South to SW
 				IJ.run ("LiveWire", "x0="+ (width/2) + " y0=" + pS[i] + " x1=" + x + " y1=" + y + " magnitude=43 direction=13 exponential=0 power=10");				
@@ -624,6 +691,10 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 			PolygonRoi finalRoi = new PolygonRoi(p,Roi.TRACED_ROI);
 			sw.getImagePlus().setRoi(finalRoi);
 			
+			
+			
+			
+			
 			//Roi aRoi = new Roi(pW[i], pN[i], pE[i]-pW[i],pS[i]-pN[i]);
 			//sw.getImagePlus().setRoi(aRoi);
 			IJ.run("Add to Manager ");			
@@ -632,6 +703,496 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 
 		}).start();		
 	}
+	
+	
+	/**
+	 * Same as makeSelection, but this time, uses LiveWire to join points clockwise
+	 *
+	 */
+	private void makeSnakeSelection() {	
+		(new Thread(){ public void run(){
+		WindowManager.setCurrentWindow(iwStack);
+		StackWindow sw = (StackWindow)iwStack;
+		ImageStack stack = iwStack.getImagePlus().getStack();
+        
+		//duplicates images to apply filters
+		Duplicater duplicater = new Duplicater();
+        ImagePlus edgeImage = duplicater.duplicateStack(sw.getImagePlus(), sw.getImagePlus().getTitle() + " - Edge");
+		
+		for(int i=0;i<stack.getSize();i++){
+			System.out.println("time "+i);
+			sw.showSlice(i+1);
+			ImagePlus myIp = sw.getImagePlus();
+			ImageProcessor myIpr = myIp.getProcessor();
+			
+			//arrays to store selections
+			tx = new int[height*width];
+			ty = new int[height*width];
+			count = 0;
+								
+			//North to East
+			if(fourSlices==false){
+				IJ.makeLine((width/2),pN[i], pE[i],(height/2));				
+				storeLinePoints();
+			}
+			else{
+				//North to North Eastern
+				double Theta = Math.atan(height/width);
+				int x = (width-1) - (int)(Math.round(pNE[i]*Math.cos(Theta)));
+				int y = (int)(Math.round(pNE[i]*Math.sin(Theta)));
+				IJ.makeLine( (width/2) , pN[i] , x , y);				
+				storeLinePoints();
+				//Noth Eastern to East
+				IJ.makeLine(x , y , pE[i], (height/2));				
+				storeLinePoints();
+			}
+			
+			if(fourSlices==false){
+				//East to South
+				IJ.makeLine( pE[i] , (height/2), (width/2), pS[i]);				
+				storeLinePoints();
+			}
+			else{				
+				double Theta = Math.atan(height/width);
+				int x = (int)(Math.round(pSE[i]*Math.cos(Theta)));
+				int y = (int)(Math.round(pSE[i]*Math.sin(Theta)));
+				//East to SE
+				IJ.makeLine( pE[i], (height/2), x , y );				
+				storeLinePoints();
+				IJ.makeLine(x , y , (width/2) , pS[i]);							
+				storeLinePoints();
+			}
+						
+			if(fourSlices==false){
+				//South to West
+				IJ.makeLine((width/2) ,  pS[i] , pW[i] , (height/2));							
+				storeLinePoints();	
+				
+			}
+			else{
+				double Theta = Math.atan(height/width);
+				int x = (width-1) - (int)(Math.round(pSW[i]*Math.cos(Theta)));
+				int y = (int)(Math.round(pSW[i]*Math.sin(Theta)));
+				//South to SW
+				IJ.makeLine((width/2), pS[i] , x , y);							
+				storeLinePoints();
+				
+				IJ.makeLine( x , y , pW[i] , (height/2) );				
+				storeLinePoints();							
+			}
+												
+			if(fourSlices==false){			
+				//West to North
+				IJ.makeLine(pW[i], (height/2) , (width/2) , pN[i] );									
+				//storeLinePoints();
+			}
+			else{
+				//West to NW
+				double Theta = Math.atan(height/width);
+				int x = (int)(Math.round(pNW[i]*Math.cos(Theta)));
+				int y = (int)(Math.round(pNW[i]*Math.sin(Theta)));				
+				
+				IJ.makeLine(pW[i] , (height/2) , x , y );										
+				//storeLinePoints();
+				
+				IJ.makeLine( x , y , (width/2) , pN[i] );										
+				//storeLinePoints();				
+				
+			}			
+			Polygon p = new Polygon(tx,ty,count);			
+			//PolygonRoi finalRoi = new PolygonRoi(p,Roi.TRACED_ROI);
+			//sw.getImagePlus().setRoi(finalRoi);
+			
+			//System.out.println("After Polygon");
+//			Creates a Snake from polygon selection
+			//updates handle squares															
+			//KWTSnakes
+			//create points
+			ArrayList snakePoints = new ArrayList();				
+			for(int j=0;j< p.npoints;j++){
+				//System.out.println("Adding points to snake " + p.xpoints[j] + ", " + p.ypoints[j]);
+				snakePoints.add(new SnakePoint(p.xpoints[j],p.ypoints[j]));
+			}
+			
+			
+			//create image
+	        BufferedImage   image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);		        		        		                        
+	        Graphics g = image.createGraphics();
+	        g.drawImage(sw.getImagePlus().getImage(), 0, 0, null);
+	        g.dispose();            
+	        
+			double[] myrgradient = new double[height*width];
+			dj.getGradientR(myrgradient);
+			
+            Roi aRoi = sw.getImagePlus().getRoi();
+            sw.getImagePlus().killRoi();            
+            edgeImage.setSlice(i+1);
+            edgeImage.getStack().getProcessor(i+1).findEdges();
+//            WindowManager.setTempCurrentImage(edgeImage);            
+            //edgeImage.getProcessor().findEdges();                  
+            BufferedImage   potential = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);		        		        		                        
+	        Graphics gPot = potential.createGraphics();
+	        gPot.drawImage(edgeImage.getProcessor().createImage(),0,0,null);
+	        gPot.dispose();
+	        //edgeImage.show();
+	        //edgeImage.updateAndDraw();
+	        /*ImagePlus test = NewImage.createByteImage("Teste"+i,sw.getWidth(),sw.getHeight(),1,NewImage.FILL_WHITE);	        	       	       
+	        test.updateAndDraw();
+	        test.show();
+	        gPot.setColor(Color.RED);
+	        gPot.drawRect(0,0,10,20);
+	        test.getCanvas().getGraphics().drawLine(0,0,30,30);
+	        test.getCanvas().getGraphics().drawImage(potential,0,0,null);*/
+	        
+	        //test.getWindow().drawInfo(gPot);
+	        
+	        
+	        
+	        WindowManager.setCurrentWindow(iwStack);
+	        sw.getImagePlus().setRoi(aRoi);
+			
+			
+            //System.out.println("After Duplicator");
+			int level = 5;
+			SensorSnake snake = new SensorSnake(snakePoints, image,potential,false,level);
+	        //KWTSnake snake = new KWTSnake(snakePoints,image,potential,false);
+			for(int j=0;j<100;j++){
+				snake.deform();
+			}
+			//System.out.println("After Deforming");
+			
+				Rectangle rect = new Rectangle(width,height);
+				
+//				snake.draw( img.getWindow().getGraphics(),1,rect);				
+				//img.getCanvas().getGraphics().clearRect(0,0,50,50);
+				
+				Polygon pSnake = new Polygon();
+				//for kwt
+				/*for(int j=0;j<snake.points.size();j++){
+					
+					SnakePoint sp1 = (SnakePoint) snake.points.get(j);
+					//System.out.println("Adding point" + sp1.getPos().getX() + ", " + (int) sp1.getPos().getY());
+					pSnake.addPoint((int) sp1.getPos().getX(),(int) sp1.getPos().getY());
+				}*/
+				
+				//for sensorsnake
+				for(int j=0;j<snake.subdivPoints[level].size();j++){
+					
+					SnakePoint sp1 = (SnakePoint) snake.subdivPoints[level].get(j);
+					//System.out.println("Adding point" + sp1.getPos().getX() + ", " + (int) sp1.getPos().getY());
+					pSnake.addPoint((int) sp1.getPos().getX(),(int) sp1.getPos().getY());
+				}								
+
+				//handles roi				
+				PolygonRoi sRoi = new PolygonRoi(pSnake,Roi.TRACED_ROI);																		
+				sw.getImagePlus().setRoi(sRoi);			
+			
+			
+			//Roi aRoi = new Roi(pW[i], pN[i], pE[i]-pW[i],pS[i]-pN[i]);
+			//sw.getImagePlus().setRoi(aRoi);
+				
+			IJ.run("Add to Manager ");
+			System.out.println("After Adding to manager");
+		}
+		}
+
+		}).start();		
+	}
+	
+	private void makePolygonSelection() {	
+		(new Thread(){ public void run(){
+		WindowManager.setCurrentWindow(iwStack);
+		StackWindow sw = (StackWindow)iwStack;
+		ImageStack stack = iwStack.getImagePlus().getStack();        		
+		
+		for(int i=0;i<stack.getSize();i++){
+			System.out.println("time "+i);
+			sw.showSlice(i+1);
+			ImagePlus myIp = sw.getImagePlus();
+			ImageProcessor myIpr = myIp.getProcessor();
+			
+			//arrays to store selections
+			tx = new int[height*width];
+			ty = new int[height*width];
+			count = 0;
+								
+			//North to East
+			if(fourSlices==false){
+				IJ.makeLine((width/2),pN[i], pE[i],(height/2));				
+				storeLinePoints();
+			}
+			else{
+				//North to North Eastern
+				double Theta = Math.atan(height/width);
+				int x = (width-1) - (int)(Math.round(pNE[i]*Math.cos(Theta)));
+				int y = (int)(Math.round(pNE[i]*Math.sin(Theta)));
+				IJ.makeLine( (width/2) , pN[i] , x , y);				
+				storeLinePoints();
+				//Noth Eastern to East
+				IJ.makeLine(x , y , pE[i], (height/2));				
+				storeLinePoints();
+			}
+			
+			if(fourSlices==false){
+				//East to South
+				IJ.makeLine( pE[i] , (height/2), (width/2), pS[i]);				
+				storeLinePoints();
+			}
+			else{				
+				double Theta = Math.atan(height/width);
+				int x = (int)(Math.round(pSE[i]*Math.cos(Theta)));
+				int y = (int)(Math.round(pSE[i]*Math.sin(Theta)));
+				//East to SE
+				IJ.makeLine( pE[i], (height/2), x , y );				
+				storeLinePoints();
+				IJ.makeLine(x , y , (width/2) , pS[i]);							
+				storeLinePoints();
+			}
+						
+			if(fourSlices==false){
+				//South to West
+				IJ.makeLine((width/2) ,  pS[i] , pW[i] , (height/2));							
+				storeLinePoints();	
+				
+			}
+			else{
+				double Theta = Math.atan(height/width);
+				int x = (width-1) - (int)(Math.round(pSW[i]*Math.cos(Theta)));
+				int y = (int)(Math.round(pSW[i]*Math.sin(Theta)));
+				//South to SW
+				IJ.makeLine((width/2), pS[i] , x , y);							
+				storeLinePoints();
+				
+				IJ.makeLine( x , y , pW[i] , (height/2) );				
+				storeLinePoints();							
+			}
+												
+			if(fourSlices==false){			
+				//West to North
+				IJ.makeLine(pW[i], (height/2) , (width/2) , pN[i] );									
+				storeLinePoints();
+			}
+			else{
+				//West to NW
+				double Theta = Math.atan(height/width);
+				int x = (int)(Math.round(pNW[i]*Math.cos(Theta)));
+				int y = (int)(Math.round(pNW[i]*Math.sin(Theta)));				
+				
+				IJ.makeLine(pW[i] , (height/2) , x , y );										
+				storeLinePoints();
+				
+				IJ.makeLine( x , y , (width/2) , pN[i] );										
+				storeLinePoints();				
+				
+			}			
+			Polygon p = new Polygon(tx,ty,count);			
+			PolygonRoi finalRoi = new PolygonRoi(p,Roi.TRACED_ROI);
+			sw.getImagePlus().setRoi(finalRoi);							
+			IJ.run("Add to Manager ");			
+		}
+		}
+
+		}).start();		
+	}
+
+
+	
+	
+	
+	//makes the measures
+	//stores points to temporary selection 
+	private void makeMeasures() {
+		//
+		(new Thread(){ public void run(){
+			WindowManager.setCurrentWindow(iwStack);
+			
+			StackWindow sw = (StackWindow)iwStack;
+			ImageStack stack = iwStack.getImagePlus().getStack();
+			ImageWindow iwMask=null;
+			ImageWindow iwTemp;
+						
+			ImageStack resultsTPF = img.createEmptyStack();
+			ImageStack resultsFPF = img.createEmptyStack();
+			ImageStack resultsFNF = img.createEmptyStack();
+			
+			ImageProcessor newImage;
+			
+			//file input output
+			
+			FileOutputStream out; 
+            PrintStream p=null; 
+            try{
+                // Create a new file output stream
+                // connected to "myfile.txt"
+                out = new FileOutputStream("results.txt");
+
+                // Connect print stream to the output stream
+                p = new PrintStream( out );                
+            }
+            catch (Exception e)
+            {
+                    System.err.println ("Error writing to file");
+            }
+            
+            			
+			
+			
+			for(int i=0;i<stack.getSize();i++){
+				WindowManager.setCurrentWindow(iwStack);
+				sw.showSlice(i+1);
+				ImagePlus myIp = sw.getImagePlus();
+				ImageProcessor myIpr = myIp.getProcessor();
+				
+				//clear Mask
+				/*if(iwMask!=null){
+					WindowManager.setCurrentWindow(iwMask);
+					IJ.run("Select All");
+					IJ.run("Clear");
+					IJ.run("Select None");
+				}*/
+				
+				WindowManager.setCurrentWindow(iwStack);
+					
+				//loads selection
+				IJ.runMacro("roiManager(\"Select\", "+ i +")");
+				IJ.run("Create Mask");					
+				iwMask = WindowManager.getCurrentWindow();
+				WindowManager.setCurrentWindow(iwMask);
+				//sets TPF				
+				IJ.run("Duplicate...", "title=TPF" +i); //true positive fraction
+				iwTemp = WindowManager.getCurrentWindow();
+				iwMask.close();
+								
+				
+				
+				//select the gold standard
+				WindowManager.setCurrentWindow(iwStack);
+				IJ.runMacro("roiManager(\"Select\", "+ (i + stack.getSize())+")");								
+				
+				//create a mask for the goldStandard
+				IJ.run("Create Mask");
+				iwMask = WindowManager.getCurrentWindow();
+				
+				//count GoldStandard Area
+				int gsArea = 0;
+				byte[] pc = (byte[]) (WindowManager.getCurrentImage().getProcessor().getPixels());
+				for (int y = 0; y < height; y++) {
+				    int offset = y * width;
+				    for (int x = 0; x < width; x++) {				    	
+				    	int j = offset + x;				    	
+				    	if((pc[j]&0xff)==255) //remember that mask is LUT inverted
+				    		gsArea++;
+				    }				    
+				}			
+				p.print(i +" GoldStandard Area "+ gsArea + " " );								
+				
+				IJ.run("Image Calculator...", "image1=Mask operation=AND image2=TPF"+i+" create");
+				ImageWindow tmp = WindowManager.getCurrentWindow();
+																
+				ImagePlus timg = NewImage.createByteImage("Nome",img.getWidth(),img.getHeight(),1,NewImage.FILL_WHITE);
+				newImage = timg.getProcessor();
+				int tpf = 0;
+								
+				byte[] newPixels = (byte[]) newImage.getPixels();
+				pc = (byte[]) (WindowManager.getCurrentImage().getProcessor().getPixels());
+				for (int y = 0; y < height; y++) {
+				    int offset = y * width;
+				    for (int x = 0; x < width; x++) {				    	
+				    	int j = offset + x;
+				    	newPixels[j] = (byte) (255 - pc[j]) ;
+				    	if((pc[j]&0xff)==255) //remember that mask is LUT inverted
+				    		tpf++;
+				    }				    
+				}			
+				/*WindowManager.setTempCurrentImage(timg);
+				IJ.run("Make Binary");
+				WindowManager.setTempCurrentImage(null);				
+				ImageStatistics stats = ImageStatistics.getStatistics(newImage, 0, timg.getCalibration());*/
+				p.print ("AreaTPF " + tpf + " ");
+				
+				
+				resultsTPF.addSlice(null,newImage);	
+				
+				ImagePlus timg1 = NewImage.createByteImage("Nome",img.getWidth(),img.getHeight(),1,NewImage.FILL_WHITE);
+				newImage = timg1.getProcessor();
+				
+				WindowManager.setCurrentWindow(iwMask);
+				iwMask.getImagePlus().getProcessor().invert();
+				IJ.run("Image Calculator...", "image1=Mask operation=AND image2=TPF"+i+" create");
+				ImageWindow tmp1 = WindowManager.getCurrentWindow();
+				int fpf = 0;
+				pc = (byte[]) (WindowManager.getCurrentImage().getProcessor().getPixels());
+				newPixels = (byte[]) newImage.getPixels();
+				for (int y = 0; y < height; y++) {
+				    int offset = y * width;
+				    for (int x = 0; x < width; x++) {				    	
+				    	int j = offset + x;				  
+				    	newPixels[j] = (byte) (255 - pc[j]) ;
+				    	if((pc[j]&0xff)==255) //remember that mask is LUT inverted
+				    		fpf++;
+				    }				    
+				}
+				
+				resultsFPF.addSlice(null,newImage);
+				
+				
+
+				iwMask.getImagePlus().getProcessor().invert();//return goldstandard to original
+				iwTemp.getImagePlus().getProcessor().invert();//get selection complementary
+				
+				ImagePlus timg2 = NewImage.createByteImage("Nome",img.getWidth(),img.getHeight(),1,NewImage.FILL_WHITE);
+				newImage = timg2.getProcessor();
+				IJ.run("Image Calculator...", "image1=Mask operation=AND image2=TPF"+i+" create");
+				ImageWindow tmp2 = WindowManager.getCurrentWindow();
+				
+				int fnf = 0;
+				newPixels = (byte[]) newImage.getPixels();
+				pc = (byte[]) (WindowManager.getCurrentImage().getProcessor().getPixels());
+				for (int y = 0; y < height; y++) {
+				    int offset = y * width;
+				    for (int x = 0; x < width; x++) {				    	
+				    	int j = offset + x;			
+				    	newPixels[j] = (byte) (255 - pc[j]) ;
+				    	if((pc[j]&0xff)==255) //remember that mask is LUT inverted
+				    		fnf++;
+				    }				    
+				}
+				
+				resultsFNF.addSlice(null,newImage);
+				
+				p.print ("AreaFPF " + fpf + " ");
+				p.print ("AreaFNF " + fnf + " ");
+				
+				p.print("TPF % " + (double)(tpf)/gsArea +
+						" FPF % " + (double)(fpf)/gsArea + 
+						" FNF % " + (double)(fnf)/gsArea );
+				
+				p.println("");
+				tmp.close();
+				iwTemp.close();
+				iwMask.close();				
+				tmp1.close();
+				tmp2.close();
+									
+			}			
+			ImagePlus imp1 = new ImagePlus("TPF-"+img.getTitle(), resultsTPF);		
+			imp1.show();
+			
+			ImagePlus imp2 = new ImagePlus("FPF-"+img.getTitle(), resultsFPF);		
+			imp2.show();
+			
+			ImagePlus imp3 = new ImagePlus("FNF-"+img.getTitle(), resultsFNF);		
+			imp3.show();
+			
+            p.close();
+
+			
+		}}).start();		
+				
+	}
+	
+	
+	
 	//stores points to temporary selection 
 	private void storePoints() {
 		//
@@ -650,6 +1211,27 @@ public class IVUS_ implements PlugInFilter, MouseListener, MouseMotionListener {
 
 		
 	}
+	
+	//	stores line points to temporary selection 
+	private void storeLinePoints() {
+		//
+		WindowManager.setCurrentWindow(iwStack);
+		StackWindow sw = (StackWindow)iwStack;
+		//ImageStack stack = iwStack.getImagePlus().getStack();
+		
+		Line lRoi = (Line)sw.getImagePlus().getRoi();
+		tp = lRoi.getPolygon();	
+		
+		for(int j=0;j<tp.npoints;j++){
+			//System.out.println("Storing " + tp.xpoints[j] + " , " + tp.ypoints[j] );
+			tx[count]=tp.xpoints[j];
+			ty[count]=tp.ypoints[j];
+			count++;
+		}
+
+		
+	}
+	
 	
 	
 	public void showSelections(){

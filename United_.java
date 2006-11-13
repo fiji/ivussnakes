@@ -1,10 +1,12 @@
 import ij.IJ;
 import ij.ImagePlus;
+import ij.WindowManager;
 import ij.gui.ERoi;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.Roi;
 import ij.gui.Toolbar;
+import ij.plugin.filter.Duplicater;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
@@ -180,27 +182,45 @@ public class United_ extends LiveWire_{
 		        g.drawImage(img.getImage(), 0, 0, null);
 		        g.dispose();            
 		        
+				double[] myrgradient = new double[height*width];
+				dj.getGradientR(myrgradient);
+				
+                Roi aRoi = img.getRoi();
+                img.killRoi();
+                Duplicater duplicater = new Duplicater();
+                ImagePlus edgeImage =duplicater.duplicateStack(img, img.getTitle() + " - Edge");
+                WindowManager.setTempCurrentImage(edgeImage);
+                edgeImage.getProcessor().findEdges();                  
+                BufferedImage   potential = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);		        		        		                        
+		        Graphics gPot = potential.createGraphics();
+		        gPot.drawImage(edgeImage.getImage(),0,0,null);
+		        gPot.dispose();                                
+                img.setRoi(aRoi);
+				
+				
 		        
 									
-				KWTSnake snake = new KWTSnake(snakePoints, image,image,true);
-				for(int i=0;i<100;i++)
+				KWTSnake snake = new KWTSnake(snakePoints, image,potential,false);
+				for(int i=0;i<1000;i++){
 					snake.deform();
-				Rectangle rect = new Rectangle(width,height);
+				}
 				
-//				snake.draw( img.getWindow().getGraphics(),1,rect);				
-				//img.getCanvas().getGraphics().clearRect(0,0,50,50);
-				
-				Polygon pSnake = new Polygon();
-				for(int i=0;i<snake.points.size();i++){
-					SnakePoint sp1 = (SnakePoint) snake.points.get(i);
-					pSnake.addPoint((int) sp1.getPos().getX(),(int) sp1.getPos().getY());
-				}								
+					Rectangle rect = new Rectangle(width,height);
+					
+//					snake.draw( img.getWindow().getGraphics(),1,rect);				
+					//img.getCanvas().getGraphics().clearRect(0,0,50,50);
+					
+					Polygon pSnake = new Polygon();
+					for(int j=0;j<snake.points.size();j++){
+						SnakePoint sp1 = (SnakePoint) snake.points.get(j);
+						pSnake.addPoint((int) sp1.getPos().getX(),(int) sp1.getPos().getY());
+					}								
 
-				//handles roi
-				Polygon myAnchor = new Polygon(ax,ay,anchor.size());
-				pRoi = new ERoi(pSnake,Roi.FREELINE, myAnchor);		
-				img.setRoi(pRoi);
-				
+					//handles roi
+					Polygon myAnchor = new Polygon(ax,ay,anchor.size());
+					pRoi = new ERoi(pSnake,Roi.FREELINE, myAnchor);		
+					img.setRoi(pRoi);															
+								
 				
 				
 				

@@ -308,9 +308,7 @@ class Dijkstraheap implements Runnable{
 	    fg= (1.0/Math.sqrt(2)*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy)));
 
 
-	//this parameter is an attempt to find edges in IVUS images	
-	double x = (gradientr[toIndex(dx,dy)]-grmin)/(grmax-grmin);
-	double fe = Math.exp(-pw*x)*fg;
+	
 
 
 	//	System.out.println("Fg " + fg +" gradientr " + gradientr[toIndex(dx,dy)] + " grmin " + grmin + " grmax " + grmax);
@@ -369,12 +367,23 @@ class Dijkstraheap implements Runnable{
 			   + " p (" +p.getX()+ ","+p.getY() + ") q(" +q.getX()+","+q.getY()+") " 
 			   + "Gradp(" + gradientx[toIndex(sx,sy)]+ ","+gradienty[toIndex(sx,sy)]+ ") " 
 			   + "Gradq(" + gradientx[toIndex(dx,dy)]+ ","+gradienty[toIndex(dx,dy)]+ ")");*/
-
-	double l5 = (double)(lap5zc[toIndex(dx,dy)]& 0xff);
-	double l9 = (double)(lap9zc[toIndex(dx,dy)]& 0xff);
-	double fz = 0.45*l5+0.55*l9;
+	double fz = 0;
+	
+	if(lap5zc != null){
+		double l5 = (double)(lap5zc[toIndex(dx,dy)]& 0xff);
+		double l9 = (double)(lap9zc[toIndex(dx,dy)]& 0xff);
+		fz = 0.45*l5+0.55*l9;
+	}
+	
+//	this parameter is an attempt to find edges in IVUS images	
+	double x = (gradientr[toIndex(dx,dy)]-grmin)/(grmax-grmin);
+	double fe = Math.exp(-pw*x)*(fg);//+fd+fz);
+	
+	//temporary -- testing Sergio's suggestion
+	//return ( gw*fg*( 1 - Math.exp(-pw*fg)) + dw*(1 - Math.exp(-pw*fd)) + zw*(1 - Math.exp(-pw*fz)) ); 
 	
 	//return Math.abs(imagePixels[toIndex(dx,dy)]-imagePixels[toIndex(sx,sy)]);
+	
 	return ew*fe+gw*fg+dw*fd+zw*fz;//+0.2*Math.sqrt( (dx-sx)*(dx-sx) + (dy-sy)*(dy-sy));
 	
     }
