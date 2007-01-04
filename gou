@@ -3,10 +3,19 @@
 cp Dijkstraheap.java source/
 cp Vector2d.java source/
 cp United_.java source/
+cp Vector2d.java source/
+cp KWTSnake.java source/
+cp SnakePoint.java source/
+cp Vector2D.java source/
+cp LinearSystem.java source/
+cp PinPoint.java source/
+cp Snake.java source/
+cp LiveWire_.java source/
+
 cp ./ij/gui/ERoi.java ./source/ij/gui/
 
-javac -cp ij.jar:tools.jar -d . ij/gui/ERoi.java Dijkstraheap.java Vector2d.java United_.java KWTSnake.java SnakePoint.java Vector2D.java LinearSystem.java PinPoint.java Snake.java LiveWire_.java
+/opt/SDK/jdk/bin/javac -cp ij.jar:tools.jar -d . ij/gui/ERoi.java Dijkstraheap.java Vector2d.java United_.java KWTSnake.java SnakePoint.java Vector2D.java LinearSystem.java PinPoint.java Snake.java LiveWire_.java
 
-jar cf United_.jar Dijkstraheap.class United_.class United_\$1.class LiveWire_\$1.class LiveWire_\$2.class LiveWire_\$3.class LiveWire_\$4.class LiveWire_\$5.class PixelNode.class Vector2d.class LinearSystem.class PinPoint.class KWTSnake.class Snake.class SnakePoint.class Vector2D.class ij/gui/ERoi.class ./source/* README.txt ./united/plugins.config LiveWire_.class
+jar cf United_.jar Dijkstraheap.class United_.class United_\$1.class LiveWire_\$1.class LiveWire_\$2.class LiveWire_\$3.class LiveWire_\$4.class LiveWire_\$5.class PixelNode.class Vector2d.class LinearSystem.class PinPoint.class KWTSnake.class Snake.class SnakePoint.class Vector2D.class ij/gui/ERoi.class ./source/* README.txt  LiveWire_.class
 
 cp -f ./United_.jar /home/baggio/InCor/source/plugins
