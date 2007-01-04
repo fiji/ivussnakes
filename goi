@@ -5,7 +5,7 @@ cp Vector2d.java source/
 cp LiveWire_.java source/
 cp ./ij/gui/ERoi.java ./source/ij/gui/
 
-javac -cp ij.jar:tools.jar -d . ij/gui/ERoi.java Dijkstraheap.java Vector2d.java IVUS_.java  KWTSnake.java SnakePoint.java Vector2D.java LinearSystem.java PinPoint.java Snake.java SensorSnake.java SubdivCurveSnake.java
+/opt/SDK/jdk/bin/javac -cp ij.jar:tools.jar -d . ij/gui/ERoi.java Dijkstraheap.java Vector2d.java IVUS_.java  KWTSnake.java SnakePoint.java Vector2D.java LinearSystem.java PinPoint.java Snake.java SensorSnake.java SubdivCurveSnake.java
 
 jar cf IVUS_.jar Dijkstraheap.class IVUS_*.class PixelNode.class Vector2d.class ij/gui/ERoi.class LinearSystem.class PinPoint.class KWTSnake.class Snake.class SnakePoint.class Vector2D.class SensorSnake.class SubdivCurveSnake.class ./source/*.java README.txt
 
